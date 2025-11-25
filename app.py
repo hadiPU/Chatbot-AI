@@ -1,19 +1,29 @@
-# app.py — Final version (Gemini 2.5-flash, top-seller, robust cart & checkout)
+# app.py - Toko Online + Chatbot (Gemini)
+# Lengkap: Gemini 2.5-flash, produk terlaris, cart fixes, robust add_order
+
 import streamlit as st
 import sqlite3
 import json
 import os
 from datetime import datetime
+from dotenv import load_dotenv
 
 # ----------------------------------------
 # Gemini (Google Generative AI) SDK
 # pip install google-generativeai
 # ----------------------------------------
-USE_GEMINI_LIB = True
+USE_GEMINI_LIB = False 
+load_dotenv()
+
 try:
-    import google.generativeai as genai
-except Exception:
+    # Menggunakan SDK baru: google-genai
+    import google.genai as genai 
+    from google.genai import types # Import types untuk GenerateContentConfig
+    USE_GEMINI_LIB = True
+except ImportError:
+    st.error("🚨 Library **google-genai** belum terinstal. Jalankan: `pip install google-genai`")
     USE_GEMINI_LIB = False
+
 
 DB_PATH = "db.sqlite"
 PRODUCTS_JSON = "products.json"
@@ -208,32 +218,25 @@ def add_order(customer_name, customer_phone, cart_items):
 
 
 # ---------------- Gemini helper ----------------
-def call_gemini_chat(user_msg, api_key=None, system_prompt=None, model="gemini-2.5-flash"):
-    if not USE_GEMINI_LIB:
-        return "Library google-generativeai belum ter-install. Jalankan: pip install google-generativeai"
-
-    final_key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-    if not final_key:
-        return "API key Gemini tidak ditemukan."
-
-    genai.configure(api_key=final_key)
-
-    prompt = (system_prompt + "\n\n" + user_msg) if system_prompt else user_msg
-
+def call_gemini_chat(prompt, api_key, system_prompt, model):
+    """Memanggil Gemini API dengan prompt dan system prompt."""
     try:
-        model_engine = genai.GenerativeModel(model)
-        response = model_engine.generate_content(
-            prompt,
-            generation_config={
-                "temperature": 0.2,
-                "top_p": 1.0,
-                "max_output_tokens": 500
-            }
+        # Inisialisasi klien dengan API Key
+        client = genai.Client(api_key=api_key) 
+        
+        config = types.GenerateContentConfig(
+            system_instruction=system_prompt
         )
-        return getattr(response, "text", str(response))
+        
+        response = client.models.generate_content(
+            model=model,
+            contents=prompt,
+            config=config,
+        )
+        return response.text
     except Exception as e:
-        return f"Error memanggil Gemini API: {e}"
-
+        st.error(f"Terjadi error saat memanggil Gemini API: {e}")
+        return "Gagal mendapatkan jawaban dari Gemini."
 
 # ---------------- Streamlit UI ----------------
 st.set_page_config(page_title="Toko Online + Chatbot", layout="wide")
@@ -261,17 +264,6 @@ else:
 # session cart
 if "cart" not in st.session_state:
     st.session_state.cart = []
-# reload flag (untuk fallback rerun)
-if "_reload_flag" not in st.session_state:
-    st.session_state["_reload_flag"] = False
-
-# helper: safe rerun fallback
-def safe_rerun():
-    try:
-        st.experimental_rerun()
-    except AttributeError:
-        st.session_state["_reload_flag"] = not st.session_state.get("_reload_flag", False)
-        st.stop()
 
 
 # ---------------- Katalog ----------------
@@ -313,6 +305,7 @@ if menu == "Katalog":
                         })
                         st.success("Produk ditambahkan ke keranjang")
 
+
 # ---------------- Keranjang & Checkout ----------------
 elif menu == "Keranjang":
     st.header("Keranjang Belanja")
@@ -325,7 +318,7 @@ elif menu == "Keranjang":
             st.write(f"{i+1}. {c['name']} — {c['variant_name']} x{c['qty']}  → Rp {c['price']*c['qty']:,}")
             if st.button(f"Hapus {i}", key=f"rm_{i}"):
                 st.session_state.cart.pop(i)
-                safe_rerun()
+                st.experimental_rerun()
         st.write("**Total:** Rp {:,}".format(total))
         st.write("---")
         st.subheader("Checkout")
@@ -339,30 +332,48 @@ elif menu == "Keranjang":
                 st.success(f"Order berhasil dibuat (ID: {oid}). Terima kasih!")
                 st.session_state.cart = []
 
+
 # ---------------- Chatbot ----------------
 elif menu == "Chatbot":
     st.header("Chatbot Produk (jawab pakai data lokal atau Gemini API)")
     st.write("1. Jawaban lokal menggunakan data di database (cepat, tanpa biaya).")
-    st.write("2. Jika ingin jawaban lebih natural, centang 'Gunakan Gemini API' lalu isi API key di environment.")
+    st.write("2. Jika ingin jawaban lebih natural, centang **'Gunakan Gemini API'** lalu isi API key di environment.")
     use_api = st.checkbox("Gunakan Gemini API (opsional)")
-    if use_api:
-        st.info("Pastikan Anda sudah memasang GEMINI_API_KEY atau GOOGLE_API_KEY di environment, atau masukkan API key di input di bawah.")
-        api_key_input = st.text_input("Masukkan Gemini API key (opsional, kalau kosong akan pakai env var)", type="password")
-    else:
-        api_key_input = None
 
-    model_choice = st.selectbox("Pilih model Gemini", ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-1.5-flash", "gemini-1.5-pro"])
+    # Inisialisasi api_key_input, dan biarkan nilai kuncinya diambil di bawah
+    api_key_source_info = ""
+    
+    if use_api:
+        # Ambil key dari Environment Variable yang sudah dimuat dari .env
+        api_key_input = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+        
+        if api_key_input:
+            api_key_source_info = "Key **DITEMUKAN** di Environment Variable."
+            st.info(f"✅ Mode Gemini API aktif. {api_key_source_info}")
+        else:
+            api_key_source_info = "Key **TIDAK DITEMUKAN** di Environment Variable."
+            st.warning("⚠️ Mode Gemini API aktif, tapi **API key tidak ditemukan** di Environment Variable (**GEMINI_API_KEY** atau **GOOGLE_API_KEY**).")
+            # Set api_key_input ke None jika tidak ada, agar logika di bawah bisa mendeteksi
+            api_key_input = None 
+    else:
+        api_key_input = None # Pastikan None jika tidak pakai API
+
+    model_choice = st.selectbox("Pilih model Gemini", ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-1.5-flash", "gemini-1.5-pro"], key="model_choice")
 
     user_q = st.text_input("Tanya tentang produk / harga / rekomendasi...", key="chat_input")
     if st.button("Kirim Pertanyaan"):
         if not user_q.strip():
             st.warning("Tuliskan pertanyaan dulu.")
         else:
+            # Logika pemrosesan pertanyaan
             q_lower = user_q.lower()
             local_answer = None
             conn = get_conn()
             cur = conn.cursor()
 
+            # --- LOGIKA PENCARIAN LOKAL (seperti di kode Anda) ---
+            
+            # Produk Termurah
             if "termurah" in q_lower or "yang paling murah" in q_lower or "terendah" in q_lower:
                 cur.execute("SELECT p.name, pv.price FROM products p JOIN product_variants pv ON p.id=pv.product_id ORDER BY pv.price ASC LIMIT 5")
                 rows = cur.fetchall()
@@ -372,6 +383,7 @@ elif menu == "Chatbot":
                         lines.append(f"- {r['name']} Rp {r['price']:,}")
                     local_answer = "\n".join(lines)
 
+            # Produk Termahal
             elif "termahal" in q_lower or "mahal" in q_lower or "tertinggi" in q_lower:
                 cur.execute("SELECT p.name, pv.price FROM products p JOIN product_variants pv ON p.id=pv.product_id ORDER BY pv.price DESC LIMIT 5")
                 rows = cur.fetchall()
@@ -380,95 +392,99 @@ elif menu == "Chatbot":
                     for r in rows:
                         lines.append(f"- {r['name']} Rp {r['price']:,}")
                     local_answer = "\n".join(lines)
-
+            
+            # Informasi Harga
             elif "harga" in q_lower:
-                terms = [t for t in q_lower.replace('?', ' ').split() if len(t) > 2]
+                terms = [t for t in q_lower.replace('?', ' ').split() if len(t)>2]
                 found = []
                 for t in terms[::-1]:
+                    # Menggunakan parameterisasi untuk keamanan
                     cur.execute("SELECT p.name, pv.variant_name, pv.price FROM products p JOIN product_variants pv ON p.id=pv.product_id WHERE lower(p.name) LIKE ? OR lower(p.category) LIKE ? LIMIT 5", (f"%{t}%", f"%{t}%"))
                     rows = cur.fetchall()
                     if rows:
                         for r in rows:
-                            found.append(f"- {r['name']} ({r['variant_name']}) → Rp {r['price']:,}")
+                            found.append(f"- **{r['name']}** ({r['variant_name']}) → Rp {r['price']:,}")
                     if found:
                         break
                 if found:
                     local_answer = "Saya menemukan produk:\n" + "\n".join(found)
 
+            # Informasi Stok
             elif "stok" in q_lower or "tersedia" in q_lower:
                 cur.execute("SELECT p.name, pv.variant_name, pv.stock FROM products p JOIN product_variants pv ON p.id=pv.product_id WHERE pv.stock > 0 ORDER BY pv.stock DESC LIMIT 10")
                 rows = cur.fetchall()
                 lines = ["Produk dengan stok tersedia (top 10):"]
                 for r in rows:
-                    lines.append(f"- {r['name']} {r['variant_name']} (stok: {r['stock']})")
+                    lines.append(f"- **{r['name']}** {r['variant_name']} (stok: {r['stock']})")
                 local_answer = "\n".join(lines)
-
+                
+            # Produk Terlaris
             elif "terlaris" in q_lower or "paling laku" in q_lower or "terfavorit" in q_lower:
                 cur.execute("SELECT p.name, pv.variant_name, pv.sold_count FROM product_variants pv JOIN products p ON pv.product_id = p.id WHERE pv.sold_count > 0 ORDER BY pv.sold_count DESC LIMIT 10")
                 rows = cur.fetchall()
                 if rows:
                     lines = ["Top Produk Terlaris (berdasarkan jumlah terjual):"]
                     for r in rows:
-                        lines.append(f"- {r['name']} {r['variant_name']} (terjual: {r['sold_count']})")
+                        lines.append(f"- **{r['name']}** {r['variant_name']} (terjual: {r['sold_count']})")
                     local_answer = "\n".join(lines)
                 else:
                     local_answer = "Belum ada data penjualan."
-
+                    
             conn.close()
 
+            # --- LOGIKA TAMPILKAN JAWABAN ---
+
             if local_answer and not use_api:
-                st.subheader("Jawaban (dari data lokal)")
-                st.text(local_answer)
-            else:
+                st.subheader("🤖 Jawaban (dari data lokal)")
+                # st.text(local_answer) diganti st.markdown untuk format yang lebih baik
+                st.markdown(local_answer) 
+            elif use_api or not local_answer: # Jika pakai API atau tidak ketemu jawaban lokal
+                
+                # Persiapan System Prompt
                 system_prompt = "Kamu adalah asisten penjualan untuk toko online. Jawab singkat, jelas, dan akurat. Jika ditanya soal produk, gunakan data yang diberikan."
-                # ringkasan produk
                 prod_summary = get_product_summary_text(limit=15)
-                # ambil top seller dari database untuk disertakan ke prompt
-                try:
-                    conn2 = get_conn()
-                    cur2 = conn2.cursor()
-                    cur2.execute("""
-                        SELECT p.name, pv.variant_name, pv.sold_count
-                        FROM product_variants pv
-                        JOIN products p ON pv.product_id = p.id
-                        WHERE pv.sold_count > 0
-                        ORDER BY pv.sold_count DESC
-                        LIMIT 10
-                    """)
-                    ts = cur2.fetchall()
-                    conn2.close()
-                    if ts:
-                        top_lines = [f"- {r['name']} {r['variant_name']} (terjual: {r['sold_count']})" for r in ts]
-                        top_text = "\n".join(top_lines)
-                    else:
-                        top_text = "Belum ada data penjualan."
-                except Exception:
-                    top_text = "Belum ada data penjualan."
-
-                full_system = system_prompt + "\n\nData produk (ringkasan):\n" + prod_summary + "\n\nData produk terlaris:\n" + top_text
-
+                # Gabungkan jawaban lokal yang ditemukan (jika ada) ke dalam prompt Gemini agar Gemini bisa merangkai jawaban yang lebih natural
+                if local_answer:
+                    full_system = system_prompt + f"\n\nRingkasan produk yang relevan:\n{prod_summary}\n\nData lokal yang DITEMUKAN untuk pertanyaan ini:\n{local_answer}\n\nJawab pertanyaan user berdasarkan data di atas jika relevan, jika tidak, gunakan pengetahuan umum."
+                else:
+                    # Jika tidak ada jawaban lokal, berikan ringkasan produk saja
+                    full_system = system_prompt + "\n\nData produk (ringkasan):\n" + prod_summary
+                    
                 if use_api:
                     if not USE_GEMINI_LIB:
-                        st.error("Library google-generativeai belum ter-install. Jalankan: pip install google-generativeai")
+                        st.error("Library **google-generativeai** belum ter-install. Jalankan: `pip install google-generativeai`")
                     else:
-                        st.subheader("Jawaban (menggunakan Gemini API)")
-                        api_key = api_key_input.strip() if api_key_input else os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+                        st.subheader("✨ Jawaban (menggunakan Gemini API)")
+                        
+                        # Ambil API key dari input atau environment
+                        api_key = api_key_input
+                        
                         if not api_key:
-                            st.error("API key tidak ditemukan. Set environment variable GEMINI_API_KEY atau masukkan di input.")
+                            st.error("⚠️ **API key tidak ditemukan.** Set environment variable **GEMINI_API_KEY** atau masukkan di input.")
                         else:
-                            with st.spinner("Menghubungi Gemini..."):
-                                ans = call_gemini_chat(user_q, api_key=api_key, system_prompt=full_system, model=model_choice)
-                                st.write(ans)
+                            # Tambahkan logic untuk menggunakan jawaban lokal sebagai sumber info untuk Gemini jika ditemukan
+                            if local_answer:
+                                # Jika jawaban lokal ditemukan, jadikan itu sebagai konteks tambahan di prompt
+                                final_prompt = f"Pertanyaan: {user_q}\n\nBerdasarkan data lokal yang ditemukan, rangkai jawaban yang lebih natural dan bersahabat. Data lokal: {local_answer}"
+                            else:
+                                final_prompt = user_q # Jika tidak ada, gunakan pertanyaan user biasa
+
+                        with st.spinner(f"Menghubungi {model_choice}..."):
+                            ans = call_gemini_chat(final_prompt, api_key=api_key, system_prompt=full_system, model=model_choice)
+                            st.markdown(ans)
                 else:
-                    st.subheader("Jawaban (fallback lokal)")
-                    st.write("Maaf, saya tidak menemukan jawaban spesifik di data lokal untuk pertanyaan itu. Coba tanya 'harga [nama produk]' atau 'produk termurah'.")
+                    # Kasus jika use_api = False tapi local_answer = None
+                    st.subheader("❌ Jawaban (fallback lokal)")
+                    st.write("Maaf, saya tidak menemukan jawaban spesifik di data lokal untuk pertanyaan itu. Coba aktifkan **'Gunakan Gemini API'** atau tanya 'harga [nama produk]' atau 'produk termurah'.")
+                    
 
 # ---------------- Admin ----------------
 elif menu == "Admin":
     st.header("Admin - Import Produk & Lihat Stock")
-    if st.button("Import dari products.json (jika belum diimport)"):
+    if st.button("Import dari products.json (jika belum diimport"):
         init_db()
         st.success("Import selesai (jika file products.json tersedia).")
+
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("SELECT p.id, p.sku, p.name, p.category, pv.variant_name, pv.price, pv.stock, pv.sold_count FROM products p JOIN product_variants pv ON p.id=pv.product_id ORDER BY p.id")
@@ -480,6 +496,7 @@ elif menu == "Admin":
             st.write(f"{r['sku']} | {r['name']} - {r['variant_name']} | Rp {r['price']:,} | Stok: {r['stock']} | Terjual: {r['sold_count']}")
     else:
         st.info("Belum ada produk. Import products.json")
+
 
 # ---------------- Orders ----------------
 elif menu == "Orders":
