@@ -1,0 +1,24 @@
+# Python
+# Folder virtual environment
+venv/
+.venv/
+env/
+
+# Cache files
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+
+# IDE/Editor specific files (Optional but recommended)
+.vscode/  # Jika menggunakan VS Code
+.idea/    # Jika menggunakan PyCharm
+
+# Logs and other temporary files
+*.log
+*.tmp
+*.bak
+*~
+
+# Streamlit specific
+.streamlit/
