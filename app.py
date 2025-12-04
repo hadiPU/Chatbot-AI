@@ -1,7 +1,7 @@
 # app.py - Toko Online + Chatbot + Daily Menu + Stores + maps_url (final)
 # Simpan sebagai app.py dan jalankan: streamlit run app.py
+# NOTE: UI Streamlit dibungkus di dalam main() sehingga file ini bisa di-import oleh chatbot_only.py tanpa mengeksekusi UI.
 
-import streamlit as st
 import sqlite3
 import json
 import os
@@ -156,7 +156,7 @@ def init_db():
     # pastikan kolom maps_url ada
     ensure_maps_url_column()
 
-# Pastikan init_db dijalankan di awal
+# Pastikan init_db dijalankan di awal (tetap dilakukan pada import)
 if not os.path.exists(DB_PATH):
     init_db()
 else:
@@ -491,380 +491,389 @@ def call_gemini_chat(prompt, api_key, system_prompt, model="gemini-2.5-flash"):
         return f"Gagal memanggil Gemini: {e}"
 
 # ---------------- Streamlit UI ----------------
-st.set_page_config(page_title="Toko Online + Chatbot", layout="wide")
-st.sidebar.title("Toko Demo")
-menu = st.sidebar.selectbox("Menu", ["Katalog", "Keranjang", "Chatbot", "Admin", "Orders"])
+# Semua kode UI Streamlit dipindahkan ke fungsi main() agar modul ini bisa di-import tanpa mengeksekusi UI.
+def main():
+    import streamlit as st
 
-# session cart
-if "cart" not in st.session_state:
-    st.session_state.cart = []
+    # set_page_config harus dipanggil sekali ketika app dijalankan langsung
+    st.set_page_config(page_title="Toko Online + Chatbot", layout="wide")
+    st.sidebar.title("Toko Demo")
+    menu = st.sidebar.selectbox("Menu", ["Katalog", "Keranjang", "Chatbot", "Admin", "Orders"])
 
-# ---------------- Katalog ----------------
-if menu == "Katalog":
-    st.header("Katalog Produk")
-    rows = list_products()
-    if not rows:
-        st.info("Belum ada produk. Import via Admin.")
-    else:
-        for r in rows:
-            st.markdown("---")
-            cols = st.columns([1, 3])
-            with cols[0]:
-                if r["image_path"] and os.path.exists(r["image_path"]):
-                    st.image(r["image_path"], width=140)
-            with cols[1]:
-                st.subheader(f"{r['name']} — {r['variant_name']}")
-                st.write(f"Kategori: {r['category']}")
-                st.write(r["description"])
-                st.write(f"Harga: Rp {r['price']:,}  •  Stok: {r['stock']}")
-                qty = st.number_input(f"Jumlah ({r['name']} - {r['variant_name']})", min_value=0, max_value=r['stock'], value=0, key=f"q_{r['vid']}")
-                if st.button(f"Tambah ke Keranjang ({r['variant_name']})", key=f"a_{r['vid']}"):
-                    if qty > 0:
-                        st.session_state.cart.append({
-                            "product_id": r["pid"],
-                            "variant_id": r["vid"],
-                            "sku": r["sku"],
-                            "name": r["name"],
-                            "variant_name": r["variant_name"],
-                            "price": r["price"],
-                            "qty": qty
-                        })
-                        st.success("Produk ditambahkan ke keranjang")
+    # session cart
+    if "cart" not in st.session_state:
+        st.session_state.cart = []
 
-# ---------------- Keranjang & Checkout ----------------
-elif menu == "Keranjang":
-    st.header("Keranjang Belanja")
-    cart = st.session_state.cart
-    if not cart:
-        st.info("Keranjang kosong. Tambah produk di Katalog.")
-    else:
-        total = sum([c["price"] * c["qty"] for c in cart])
-        for i, c in enumerate(cart):
-            st.write(f"{i+1}. {c['name']} — {c['variant_name']} x{c['qty']}  → Rp {c['price']*c['qty']:,}")
-            if st.button(f"Hapus {i}", key=f"rm_{i}"):
-                st.session_state.cart.pop(i)
-                st.experimental_rerun()
-        st.write("**Total:** Rp {:,}".format(total))
-        st.write("---")
-        st.subheader("Checkout")
-        fulfill = st.radio("Metode:", ("Ambil di Toko", "Kirim ke Alamat"))
-        store_id = None
-        delivery_address = None
-        stores = list_stores()
-        if fulfill == "Ambil di Toko":
-            if stores:
-                sel = st.selectbox("Pilih toko/cabang:", [f"{s['id']}: {s['name']} — {s['address']}" for s in stores])
-                store_id = int(sel.split(":")[0])
-            else:
-                st.info("Belum ada data toko. Tambah di Admin.")
+    # ---------------- Katalog ----------------
+    if menu == "Katalog":
+        st.header("Katalog Produk")
+        rows = list_products()
+        if not rows:
+            st.info("Belum ada produk. Import via Admin.")
         else:
-            delivery_address = st.text_area("Alamat pengiriman (lengkap):")
-        name = st.text_input("Nama penerima")
-        phone = st.text_input("No. HP / Telepon")
-        if st.button("Checkout Sekarang"):
-            if not name or not phone:
-                st.warning("Isi nama dan nomor telepon.")
-            else:
-                oid = add_order(name, phone, cart, store_id=store_id, delivery_address=delivery_address)
-                st.success(f"Order berhasil dibuat (ID: {oid}). Terima kasih!")
-                st.session_state.cart = []
+            for r in rows:
+                st.markdown("---")
+                cols = st.columns([1, 3])
+                with cols[0]:
+                    if r["image_path"] and os.path.exists(r["image_path"]):
+                        st.image(r["image_path"], width=140)
+                with cols[1]:
+                    st.subheader(f"{r['name']} — {r['variant_name']}")
+                    st.write(f"Kategori: {r['category']}")
+                    st.write(r["description"])
+                    st.write(f"Harga: Rp {r['price']:,}  •  Stok: {r['stock']}")
+                    qty = st.number_input(f"Jumlah ({r['name']} - {r['variant_name']})", min_value=0, max_value=r['stock'], value=0, key=f"q_{r['vid']}")
+                    if st.button(f"Tambah ke Keranjang ({r['variant_name']})", key=f"a_{r['vid']}"):
+                        if qty > 0:
+                            st.session_state.cart.append({
+                                "product_id": r["pid"],
+                                "variant_id": r["vid"],
+                                "sku": r["sku"],
+                                "name": r["name"],
+                                "variant_name": r["variant_name"],
+                                "price": r["price"],
+                                "qty": qty
+                            })
+                            st.success("Produk ditambahkan ke keranjang")
 
-# ---------------- Chatbot (FINAL: Gemini only when ON; local only when OFF) ----------------
-elif menu == "Chatbot":
-    st.header("Chatbot Produk (lokal / Gemini)")
-    st.write("Mode default: Lokal. Centang 'Gunakan Gemini API' untuk jawaban generatif.")
-    use_api = st.checkbox("Gunakan Gemini API (opsional)")
-    if use_api:
-        api_key_input = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-        if api_key_input:
-            st.info("API key ditemukan di environment.")
+    # ---------------- Keranjang & Checkout ----------------
+    elif menu == "Keranjang":
+        st.header("Keranjang Belanja")
+        cart = st.session_state.cart
+        if not cart:
+            st.info("Keranjang kosong. Tambah produk di Katalog.")
         else:
-            st.warning("API key tidak ditemukan di environment (GEMINI_API_KEY / GOOGLE_API_KEY).")
-    model_choice = st.selectbox("Pilih model Gemini", ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-1.5-flash"], key="model_choice_chat")
-
-    user_q = st.text_input("Tanya tentang produk / harga / lokasi / rekomendasi...", key="chat_input2")
-    if st.button("Kirim Pertanyaan"):
-        if not user_q.strip():
-            st.warning("Tuliskan pertanyaan dulu.")
-        else:
-            q_lower = user_q.lower()
-            local_answer = None
-
-            # Ambil stores dan siapkan lokasi_info untuk prompt Gemini saja
+            total = sum([c["price"] * c["qty"] for c in cart])
+            for i, c in enumerate(cart):
+                st.write(f"{i+1}. {c['name']} — {c['variant_name']} x{c['qty']}  → Rp {c['price']*c['qty']:,}")
+                if st.button(f"Hapus {i}", key=f"rm_{i}"):
+                    st.session_state.cart.pop(i)
+                    st.experimental_rerun()
+            st.write("**Total:** Rp {:,}".format(total))
+            st.write("---")
+            st.subheader("Checkout")
+            fulfill = st.radio("Metode:", ("Ambil di Toko", "Kirim ke Alamat"))
+            store_id = None
+            delivery_address = None
             stores = list_stores()
-            lokasi_info = ""
-            if stores:
-                store_lines_for_prompt = []
-                for s in stores:
-                    url = maps_url_for_store_row(s)
-                    addr = s["address"] or ""
-                    phone = s["phone"] or ""
-                    if url:
-                        store_lines_for_prompt.append(f"{s['name']} — {addr} (Tel: {phone}) | MAPS: {url}")
-                    else:
-                        store_lines_for_prompt.append(f"{s['name']} — {addr} (Tel: {phone})")
-                lokasi_info = "\n".join(store_lines_for_prompt)
-
-            # --- rule-based local answers (produk, stok, menu, dll) ---
-            conn = get_conn()
-            cur = conn.cursor()
-
-            # lokasi (ringkasan tanpa maps)
-            if any(k in q_lower for k in ["lokasi", "alamat", "di mana toko", "cabang", "store", "toko terdekat"]):
+            if fulfill == "Ambil di Toko":
                 if stores:
-                    la = ["Lokasi Toko / Cabang:"]
-                    for s in stores:
-                        la.append(f"- {s['name']}: {s['address']} (Tel: {s['phone']})")
-                    local_answer = "\n".join(la)
+                    sel = st.selectbox("Pilih toko/cabang:", [f"{s['id']}: {s['name']} — {s['address']}" for s in stores])
+                    store_id = int(sel.split(":")[0])
                 else:
-                    local_answer = "Belum ada data lokasi toko. Silakan tambahkan di Admin."
-
-            # Produk termurah
-            if not local_answer and ("termurah" in q_lower or "yang paling murah" in q_lower or "terendah" in q_lower):
-                cur.execute("SELECT p.name, pv.variant_name, pv.price, pv.stock FROM products p JOIN product_variants pv ON p.id=pv.product_id ORDER BY pv.price ASC LIMIT 5")
-                rows = cur.fetchall()
-                if rows:
-                    lines = ["Top 5 produk termurah (dengan stok):"]
-                    for r in rows:
-                        lines.append(f"- {r['name']} {r['variant_name']} → Rp {r['price']:,} (stok: {r['stock']})")
-                    local_answer = "\n".join(lines)
-
-            # Produk termahal
-            if not local_answer and ("termahal" in q_lower or "mahal" in q_lower or "tertinggi" in q_lower):
-                cur.execute("SELECT p.name, pv.variant_name, pv.price, pv.stock FROM products p JOIN product_variants pv ON p.id=pv.product_id ORDER BY pv.price DESC LIMIT 5")
-                rows = cur.fetchall()
-                if rows:
-                    lines = ["Top 5 produk termahal (dengan stok):"]
-                    for r in rows:
-                        lines.append(f"- {r['name']} {r['variant_name']} → Rp {r['price']:,} (stok: {r['stock']})")
-                    local_answer = "\n".join(lines)
-
-            # Harga spesifik
-            if not local_answer and "harga" in q_lower:
-                terms = [t for t in q_lower.replace('?', ' ').split() if len(t) > 2]
-                found = []
-                for t in terms[::-1]:
-                    cur.execute("SELECT p.name, pv.variant_name, pv.price, pv.stock FROM products p JOIN product_variants pv ON p.id=pv.product_id WHERE lower(p.name) LIKE ? OR lower(pv.variant_name) LIKE ? OR lower(p.category) LIKE ? LIMIT 10",
-                                (f"%{t}%", f"%{t}%", f"%{t}%"))
-                    rows = cur.fetchall()
-                    if rows:
-                        for r in rows:
-                            found.append(f"- {r['name']} ({r['variant_name']}) → Rp {r['price']:,} (stok: {r['stock']})")
-                    if found:
-                        break
-                if found:
-                    local_answer = "Saya menemukan produk:\n" + "\n".join(found)
-
-            # Stok
-            if not local_answer and ("stok" in q_lower or "tersedia" in q_lower):
-                cur.execute("SELECT p.name, pv.variant_name, pv.stock FROM products p JOIN product_variants pv ON p.id=pv.product_id WHERE pv.stock > 0 ORDER BY pv.stock DESC LIMIT 10")
-                rows = cur.fetchall()
-                lines = ["Produk dengan stok tersedia (top 10):"]
-                for r in rows:
-                    lines.append(f"- {r['name']} {r['variant_name']} (stok: {r['stock']})")
-                local_answer = "\n".join(lines)
-
-            # Terlaris
-            if not local_answer and ("terlaris" in q_lower or "paling laku" in q_lower or "terfavorit" in q_lower):
-                cur.execute("SELECT p.name, pv.variant_name, pv.sold_count, pv.stock, pv.price FROM product_variants pv JOIN products p ON pv.product_id = p.id WHERE pv.sold_count > 0 ORDER BY pv.sold_count DESC LIMIT 10")
-                rows = cur.fetchall()
-                if rows:
-                    lines = ["Top Produk Terlaris (dengan stok):"]
-                    for r in rows:
-                        lines.append(f"- {r['name']} {r['variant_name']} (terjual: {r['sold_count']}) → Rp {r['price']:,} (stok: {r['stock']})")
-                    local_answer = "\n".join(lines)
+                    st.info("Belum ada data toko. Tambah di Admin.")
+            else:
+                delivery_address = st.text_area("Alamat pengiriman (lengkap):")
+            name = st.text_input("Nama penerima")
+            phone = st.text_input("No. HP / Telepon")
+            if st.button("Checkout Sekarang"):
+                if not name or not phone:
+                    st.warning("Isi nama dan nomor telepon.")
                 else:
-                    local_answer = "Belum ada data penjualan."
+                    oid = add_order(name, phone, cart, store_id=store_id, delivery_address=delivery_address)
+                    st.success(f"Order berhasil dibuat (ID: {oid}). Terima kasih!")
+                    st.session_state.cart = []
 
-            # Menu / rekomendasi
-            if not local_answer and ( "menu" in q_lower or any(k in q_lower for k in ["rekomendasi", "sarankan", "saran", "suggest"]) ):
-                if "besok" in q_lower:
-                    date_str = today_date_str(offset_days=1)
-                else:
-                    m = re.search(r"(\d{4}-\d{2}-\d{2})", q_lower)
-                    date_str = m.group(1) if m else today_date_str()
-                items = get_daily_menu_from_db(date_str)
-                if items is None:
-                    items, created = get_or_create_daily_menu(date_str,
-                                                              n_items=st.session_state.get("menu_n_items", 6),
-                                                              avoid_recent_days=st.session_state.get("avoid_recent_days", 2),
-                                                              seed_based_on_date=True,
-                                                              exclude_out_of_stock=True,
-                                                              prefer_best_sellers=False)
-                if items:
-                    lines = [f"Menu untuk {date_str} (dengan stok):"]
-                    for it in items:
-                        stock_text = it.get("stock", "tidak diketahui")
-                        lines.append(f"- {it.get('name')} {it.get('variant_name')} → Rp {it.get('price'):,} (stok: {stock_text})")
-                    local_answer = "\n".join(lines)
-                else:
-                    local_answer = f"Maaf, belum ada item menu untuk {date_str}."
+    # ---------------- Chatbot (FINAL: Gemini only when ON; local only when OFF) ----------------
+    elif menu == "Chatbot":
+        st.header("Chatbot Produk (lokal / Gemini)")
+        st.write("Mode default: Lokal. Centang 'Gunakan Gemini API' untuk jawaban generatif.")
+        use_api = st.checkbox("Gunakan Gemini API (opsional)")
+        if use_api:
+            api_key_input = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+            if api_key_input:
+                st.info("API key ditemukan di environment.")
+            else:
+                st.warning("API key tidak ditemukan di environment (GEMINI_API_KEY / GOOGLE_API_KEY).")
+        model_choice = st.selectbox("Pilih model Gemini", ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-1.5-flash"], key="model_choice_chat")
 
-            conn.close()
+        user_q = st.text_input("Tanya tentang produk / harga / lokasi / rekomendasi...", key="chat_input2", label_visibility="visible")
+        if st.button("Kirim Pertanyaan"):
+            if not user_q.strip():
+                st.warning("Tuliskan pertanyaan dulu.")
+            else:
+                q_lower = user_q.lower()
+                local_answer = None
 
-            # --- OUTPUT ---
-            if not use_api:
-                # Lokal mode: tampilkan lokasi + local answer (UI)
-                st.subheader("Lokasi Toko")
+                # Ambil stores dan siapkan lokasi_info untuk prompt Gemini saja
+                stores = list_stores()
+                lokasi_info = ""
                 if stores:
+                    store_lines_for_prompt = []
                     for s in stores:
                         url = maps_url_for_store_row(s)
-                        line = f"- **{s['name']}** — {s['address']} (Tel: {s['phone']})"
+                        addr = s["address"] or ""
+                        phone = s["phone"] or ""
                         if url:
-                            line += f"\n  \n  👉 [Lihat di Google Maps]({url})"
-                        st.markdown(line)
-                else:
-                    st.info("Belum ada data toko.")
+                            store_lines_for_prompt.append(f"{s['name']} — {addr} (Tel: {phone}) | MAPS: {url}")
+                        else:
+                            store_lines_for_prompt.append(f"{s['name']} — {addr} (Tel: {phone})")
+                    lokasi_info = "\n".join(store_lines_for_prompt)
 
-                st.subheader("Informasi Produk (lokal)")
-                if local_answer:
-                    st.markdown(local_answer.replace("\n", "  \n"))
-                else:
-                    st.write("Maaf, tidak menemukan jawaban lokal. Coba tanya 'harga [produk]' atau 'menu hari ini'.")
-            else:
-                # Gemini mode: TIDAK tampilkan lokasi/list toko di UI.
-                # Hanya panggil Gemini dan tampilkan jawaban Gemini saja.
-                if not USE_GEMINI_LIB:
-                    st.error("Library google-genai belum ter-install. Jalankan: pip install google-genai")
+                # --- rule-based local answers (produk, stok, menu, dll) ---
+                conn = get_conn()
+                cur = conn.cursor()
+
+                # lokasi (ringkasan tanpa maps)
+                if any(k in q_lower for k in ["lokasi", "alamat", "di mana toko", "cabang", "store", "toko terdekat"]):
+                    if stores:
+                        la = ["Lokasi Toko / Cabang:"]
+                        for s in stores:
+                            la.append(f"- {s['name']}: {s['address']} (Tel: {s['phone']})")
+                        local_answer = "\n".join(la)
+                    else:
+                        local_answer = "Belum ada data lokasi toko. Silakan tambahkan di Admin."
+
+                # Produk termurah
+                if not local_answer and ("termurah" in q_lower or "yang paling murah" in q_lower or "terendah" in q_lower):
+                    cur.execute("SELECT p.name, pv.variant_name, pv.price, pv.stock FROM products p JOIN product_variants pv ON p.id=pv.product_id ORDER BY pv.price ASC LIMIT 5")
+                    rows = cur.fetchall()
+                    if rows:
+                        lines = ["Top 5 produk termurah (dengan stok):"]
+                        for r in rows:
+                            lines.append(f"- {r['name']} {r['variant_name']} → Rp {r['price']:,} (stok: {r['stock']})")
+                        local_answer = "\n".join(lines)
+
+                # Produk termahal
+                if not local_answer and ("termahal" in q_lower or "mahal" in q_lower or "tertinggi" in q_lower):
+                    cur.execute("SELECT p.name, pv.variant_name, pv.price, pv.stock FROM products p JOIN product_variants pv ON p.id=pv.product_id ORDER BY pv.price DESC LIMIT 5")
+                    rows = cur.fetchall()
+                    if rows:
+                        lines = ["Top 5 produk termahal (dengan stok):"]
+                        for r in rows:
+                            lines.append(f"- {r['name']} {r['variant_name']} → Rp {r['price']:,} (stok: {r['stock']})")
+                        local_answer = "\n".join(lines)
+
+                # Harga spesifik
+                if not local_answer and "harga" in q_lower:
+                    terms = [t for t in q_lower.replace('?', ' ').split() if len(t) > 2]
+                    found = []
+                    for t in terms[::-1]:
+                        cur.execute("SELECT p.name, pv.variant_name, pv.price, pv.stock FROM products p JOIN product_variants pv ON p.id=pv.product_id WHERE lower(p.name) LIKE ? OR lower(pv.variant_name) LIKE ? OR lower(p.category) LIKE ? LIMIT 10",
+                                    (f"%{t}%", f"%{t}%", f"%{t}%"))
+                        rows = cur.fetchall()
+                        if rows:
+                            for r in rows:
+                                found.append(f"- {r['name']} ({r['variant_name']}) → Rp {r['price']:,} (stok: {r['stock']})")
+                        if found:
+                            break
+                    if found:
+                        local_answer = "Saya menemukan produk:\n" + "\n".join(found)
+
+                # Stok
+                if not local_answer and ("stok" in q_lower or "tersedia" in q_lower):
+                    cur.execute("SELECT p.name, pv.variant_name, pv.stock FROM products p JOIN product_variants pv ON p.id=pv.product_id WHERE pv.stock > 0 ORDER BY pv.stock DESC LIMIT 10")
+                    rows = cur.fetchall()
+                    lines = ["Produk dengan stok tersedia (top 10):"]
+                    for r in rows:
+                        lines.append(f"- {r['name']} {r['variant_name']} (stok: {r['stock']})")
+                    local_answer = "\n".join(lines)
+
+                # Terlaris
+                if not local_answer and ("terlaris" in q_lower or "paling laku" in q_lower or "terfavorit" in q_lower):
+                    cur.execute("SELECT p.name, pv.variant_name, pv.sold_count, pv.stock, pv.price FROM product_variants pv JOIN products p ON pv.product_id = p.id WHERE pv.sold_count > 0 ORDER BY pv.sold_count DESC LIMIT 10")
+                    rows = cur.fetchall()
+                    if rows:
+                        lines = ["Top Produk Terlaris (dengan stok):"]
+                        for r in rows:
+                            lines.append(f"- {r['name']} {r['variant_name']} (terjual: {r['sold_count']}) → Rp {r['price']:,} (stok: {r['stock']})")
+                        local_answer = "\n".join(lines)
+                    else:
+                        local_answer = "Belum ada data penjualan."
+
+                # Menu / rekomendasi
+                if not local_answer and ( "menu" in q_lower or any(k in q_lower for k in ["rekomendasi", "sarankan", "saran", "suggest"]) ):
+                    if "besok" in q_lower:
+                        date_str = today_date_str(offset_days=1)
+                    else:
+                        m = re.search(r"(\d{4}-\d{2}-\d{2})", q_lower)
+                        date_str = m.group(1) if m else today_date_str()
+                    items = get_daily_menu_from_db(date_str)
+                    if items is None:
+                        items, created = get_or_create_daily_menu(date_str,
+                                                                  n_items=st.session_state.get("menu_n_items", 6),
+                                                                  avoid_recent_days=st.session_state.get("avoid_recent_days", 2),
+                                                                  seed_based_on_date=True,
+                                                                  exclude_out_of_stock=True,
+                                                                  prefer_best_sellers=False)
+                    if items:
+                        lines = [f"Menu untuk {date_str} (dengan stok):"]
+                        for it in items:
+                            stock_text = it.get("stock", "tidak diketahui")
+                            lines.append(f"- {it.get('name')} {it.get('variant_name')} → Rp {it.get('price'):,} (stok: {stock_text})")
+                        local_answer = "\n".join(lines)
+                    else:
+                        local_answer = f"Maaf, belum ada item menu untuk {date_str}."
+
+                conn.close()
+
+                # --- OUTPUT ---
+                if not use_api:
+                    # Lokal mode: tampilkan lokasi + local answer (UI)
+                    st.subheader("Lokasi Toko")
+                    if stores:
+                        for s in stores:
+                            url = maps_url_for_store_row(s)
+                            line = f"- **{s['name']}** — {s['address']} (Tel: {s['phone']})"
+                            if url:
+                                line += f"\n  \n  👉 [Lihat di Google Maps]({url})"
+                            st.markdown(line)
+                    else:
+                        st.info("Belum ada data toko.")
+
+                    st.subheader("Informasi Produk (lokal)")
                     if local_answer:
-                        st.subheader("Informasi Produk (lokal)")
                         st.markdown(local_answer.replace("\n", "  \n"))
+                    else:
+                        st.write("Maaf, tidak menemukan jawaban lokal. Coba tanya 'harga [produk]' atau 'menu hari ini'.")
                 else:
-                    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-                    if not api_key:
-                        st.error("API key Gemini tidak ditemukan di environment.")
+                    # Gemini mode: TIDAK tampilkan lokasi/list toko di UI.
+                    # Hanya panggil Gemini dan tampilkan jawaban Gemini saja.
+                    if not USE_GEMINI_LIB:
+                        st.error("Library google-genai belum ter-install. Jalankan: pip install google-genai")
                         if local_answer:
                             st.subheader("Informasi Produk (lokal)")
                             st.markdown(local_answer.replace("\n", "  \n"))
                     else:
-                        # siapkan system prompt yang menyertakan lokasi_info dan ringkasan produk
-                        prod_summary = get_product_summary_text(limit=12)
-                        location_keywords = ["lokasi", "alamat", "di mana", "di mana toko", "cabang", "store", "ambil", "pickup", "antar", "kirim", "pengiriman", "cara ambil", "direksi", "arah"]
-                        include_location = any(k in q_lower for k in location_keywords)
-                        system_prompt = (
-                            "Kamu adalah asisten penjualan untuk toko online. Jawab singkat, jelas, dan akurat.\n"
-                            "PENTING: Jangan sertakan alamat lengkap atau link Google Maps kecuali pengguna secara eksplisit menanyakan lokasi, arah, cara ambil, atau pengiriman.\n"
-                            "Jika pengguna meminta lokasi atau arah, sertakan alamat lengkap dan link Google Maps persis (jika tersedia) di akhir jawaban.\n"
-                            "Jika diminta rekomendasi, pertimbangkan menu hari ini dan jelaskan lokasi/cara ambil hanya bila relevan dan diminta."
-                        )
-                        full_system = system_prompt + "\n\nRingkasan produk:\n" + prod_summary
-                        if include_location and lokasi_info:
-                            full_system += "\n\nData toko (untuk lokasi jika diminta):\n" + lokasi_info
-                        if local_answer:
-                            full_system += "\n\nInformasi lokal yang relevan:\n" + local_answer
-                        final_prompt = f"Pertanyaan: {user_q}\n\nJawab singkat dan gunakan data di atas jika relevan. "
-                        if include_location:
-                            final_prompt += "Karena pengguna menanyakan lokasi/pickup/delivery, sertakan alamat lengkap dan link Google Maps persis jika tersedia."
+                        api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+                        if not api_key:
+                            st.error("API key Gemini tidak ditemukan di environment.")
+                            if local_answer:
+                                st.subheader("Informasi Produk (lokal)")
+                                st.markdown(local_answer.replace("\n", "  \n"))
                         else:
-                            final_prompt += "JANGAN sertakan alamat lengkap atau link Google Maps kecuali pengguna meminta lokasi."
+                            # siapkan system prompt yang menyertakan lokasi_info dan ringkasan produk
+                            prod_summary = get_product_summary_text(limit=12)
+                            location_keywords = ["lokasi", "alamat", "di mana", "di mana toko", "cabang", "store", "ambil", "pickup", "antar", "kirim", "pengiriman", "cara ambil", "direksi", "arah"]
+                            include_location = any(k in q_lower for k in location_keywords)
+                            system_prompt = (
+                                "Kamu adalah asisten penjualan untuk toko online. Jawab singkat, jelas, dan akurat.\n"
+                                "PENTING: Jangan sertakan alamat lengkap atau link Google Maps kecuali pengguna secara eksplisit menanyakan lokasi, arah, cara ambil, atau pengiriman.\n"
+                                "Jika pengguna meminta lokasi atau arah, sertakan alamat lengkap dan link Google Maps persis (jika tersedia) di akhir jawaban.\n"
+                                "Jika diminta rekomendasi, pertimbangkan menu hari ini dan jelaskan lokasi/cara ambil hanya bila relevan dan diminta."
+                            )
+                            full_system = system_prompt + "\n\nRingkasan produk:\n" + prod_summary
+                            if include_location and lokasi_info:
+                                full_system += "\n\nData toko (untuk lokasi jika diminta):\n" + lokasi_info
+                            if local_answer:
+                                full_system += "\n\nInformasi lokal yang relevan:\n" + local_answer
+                            final_prompt = f"Pertanyaan: {user_q}\n\nJawab singkat dan gunakan data di atas jika relevan. "
+                            if include_location:
+                                final_prompt += "Karena pengguna menanyakan lokasi/pickup/delivery, sertakan alamat lengkap dan link Google Maps persis jika tersedia."
+                            else:
+                                final_prompt += "JANGAN sertakan alamat lengkap atau link Google Maps kecuali pengguna meminta lokasi."
 
-                        with st.spinner(f"Menghubungi {model_choice}..."):
-                            ans = call_gemini_chat(final_prompt, api_key, full_system, model=model_choice)
-                            # Tampilkan HANYA jawaban Gemini
-                            st.subheader("Jawaban Gemini")
-                            st.markdown(ans)
+                            with st.spinner(f"Menghubungi {model_choice}..."):
+                                ans = call_gemini_chat(final_prompt, api_key, full_system, model=model_choice)
+                                # Tampilkan HANYA jawaban Gemini
+                                st.subheader("Jawaban Gemini")
+                                st.markdown(ans)
 
-# ---------------- Admin ----------------
-elif menu == "Admin":
-    st.header("Admin - Produk, Store, Daily Menu")
-    col1, col2 = st.columns([2,1])
+    # ---------------- Admin ----------------
+    elif menu == "Admin":
+        st.header("Admin - Produk, Store, Daily Menu")
+        col1, col2 = st.columns([2,1])
 
-    with col1:
-        if st.button("Import dari products.json (jika ada)"):
-            n = import_products_from_json()
-            st.success(f"Import selesai. Produk di-file: {n}")
+        with col1:
+            if st.button("Import dari products.json (jika ada)"):
+                n = import_products_from_json()
+                st.success(f"Import selesai. Produk di-file: {n}")
 
+            conn = get_conn()
+            cur = conn.cursor()
+            cur.execute("SELECT p.id, p.sku, p.name, p.category, pv.variant_name, pv.price, pv.stock, pv.sold_count FROM products p JOIN product_variants pv ON p.id=pv.product_id ORDER BY p.id")
+            rows = cur.fetchall()
+            conn.close()
+            if rows:
+                st.write("Daftar Produk / Varian:")
+                for r in rows:
+                    st.write(f"{r['sku']} | {r['name']} - {r['variant_name']} | Rp {r['price']:,} | Stok: {r['stock']} | Terjual: {r['sold_count']}")
+            else:
+                st.info("Belum ada produk. Import products.json")
+
+        with col2:
+            st.subheader("Manajemen Toko")
+            with st.form("add_store_form", clear_on_submit=True):
+                s_name = st.text_input("Nama Toko")
+                s_address = st.text_area("Alamat")
+                s_phone = st.text_input("Telepon")
+                s_lat = st.text_input("Latitude (optional)")
+                s_lon = st.text_input("Longitude (optional)")
+                s_maps = st.text_input("Maps URL (paste link Google Maps persis jika ada, optional)")
+                if st.form_submit_button("Tambah Toko"):
+                    lat = float(s_lat) if s_lat.strip() else None
+                    lon = float(s_lon) if s_lon.strip() else None
+                    add_store(s_name, s_address, s_phone, lat, lon, s_maps if s_maps.strip() else None)
+                    st.success("Toko ditambahkan.")
+            stores = list_stores()
+            if stores:
+                st.write("Daftar Toko:")
+                for s in stores:
+                    md = f"- {s['id']}: **{s['name']}** — {s['address']} (Tel: {s['phone']})"
+                    # tampilkan maps_url jika ada
+                    try:
+                        mapsu = s["maps_url"]
+                    except Exception:
+                        mapsu = None
+                    if mapsu:
+                        md += f"  \n  [Lihat di Google Maps]({mapsu})"
+                    st.markdown(md)
+            else:
+                st.info("Belum ada data toko.")
+
+            st.markdown("---")
+            st.subheader("Daily Menu")
+            t = st.date_input("Tanggal menu", datetime.now().date())
+            t_str = t.isoformat()
+            n_items = st.number_input("Jumlah item menu per hari", min_value=1, max_value=20, value=6)
+            avoid_days = st.number_input("Hindari varian dari X hari terakhir", min_value=0, max_value=30, value=2)
+            if st.button("Generate menu untuk tanggal (jika belum ada)"):
+                items, created = get_or_create_daily_menu(t_str, n_items=n_items, avoid_recent_days=avoid_days)
+                if created:
+                    st.success(f"Menu untuk {t_str} berhasil digenerate dan disimpan.")
+                else:
+                    st.info(f"Menu untuk {t_str} sudah ada (tidak digenerate ulang).")
+                if items:
+                    st.write("Menu:")
+                    for it in items:
+                        st.write(f"- {it.get('name')} {it.get('variant_name')} → Rp {it.get('price'):,} (stok: {it.get('stock')})")
+                else:
+                    st.warning("Tidak ada item untuk menu ini.")
+            if st.button("Regenerate (paksa) untuk tanggal"):
+                items, created = get_or_create_daily_menu(t_str, force_regenerate=True, n_items=n_items, avoid_recent_days=avoid_days)
+                st.success(f"Menu untuk {t_str} telah di-regenerate (force).")
+                if items:
+                    for it in items:
+                        st.write(f"- {it.get('name')} {it.get('variant_name')} → Rp {it.get('price'):,} (stok: {it.get('stock')})")
+
+    # ---------------- Orders ----------------
+    elif menu == "Orders":
+        st.header("Daftar Orders")
         conn = get_conn()
         cur = conn.cursor()
-        cur.execute("SELECT p.id, p.sku, p.name, p.category, pv.variant_name, pv.price, pv.stock, pv.sold_count FROM products p JOIN product_variants pv ON p.id=pv.product_id ORDER BY p.id")
-        rows = cur.fetchall()
+        cur.execute("SELECT * FROM orders ORDER BY id DESC")
+        orders = cur.fetchall()
+        if not orders:
+            st.info("Belum ada order.")
+        for o in orders:
+            st.markdown("---")
+            st.write(f"Order ID: {o['id']} | Nama: {o['customer_name']} | Total: Rp {o['total']:,} | Status: {o['status']} | {o['created_at']}")
+            if o["store_id"]:
+                s = get_store_by_id(o["store_id"])
+                if s:
+                    st.write(f"Ambil di: {s['name']} — {s['address']}")
+                    url = maps_url_for_store_row(s)
+                    if url:
+                        st.markdown(f"[Lihat di Google Maps]({url})")
+            if o["delivery_address"]:
+                st.write(f"Alamat kirim: {o['delivery_address']}")
+            cur2 = conn.cursor()
+            cur2.execute("SELECT oi.qty, oi.price, p.name, pv.variant_name FROM order_items oi JOIN products p ON oi.product_id=p.id LEFT JOIN product_variants pv ON oi.variant_id=pv.id WHERE oi.order_id=?", (o['id'],))
+            items = cur2.fetchall()
+            for it in items:
+                st.write(f"- {it['name']} {it['variant_name']} x{it['qty']} → Rp {it['price']*it['qty']:,}")
         conn.close()
-        if rows:
-            st.write("Daftar Produk / Varian:")
-            for r in rows:
-                st.write(f"{r['sku']} | {r['name']} - {r['variant_name']} | Rp {r['price']:,} | Stok: {r['stock']} | Terjual: {r['sold_count']}")
-        else:
-            st.info("Belum ada produk. Import products.json")
 
-    with col2:
-        st.subheader("Manajemen Toko")
-        with st.form("add_store_form", clear_on_submit=True):
-            s_name = st.text_input("Nama Toko")
-            s_address = st.text_area("Alamat")
-            s_phone = st.text_input("Telepon")
-            s_lat = st.text_input("Latitude (optional)")
-            s_lon = st.text_input("Longitude (optional)")
-            s_maps = st.text_input("Maps URL (paste link Google Maps persis jika ada, optional)")
-            if st.form_submit_button("Tambah Toko"):
-                lat = float(s_lat) if s_lat.strip() else None
-                lon = float(s_lon) if s_lon.strip() else None
-                add_store(s_name, s_address, s_phone, lat, lon, s_maps if s_maps.strip() else None)
-                st.success("Toko ditambahkan.")
-        stores = list_stores()
-        if stores:
-            st.write("Daftar Toko:")
-            for s in stores:
-                md = f"- {s['id']}: **{s['name']}** — {s['address']} (Tel: {s['phone']})"
-                # tampilkan maps_url jika ada
-                try:
-                    mapsu = s["maps_url"]
-                except Exception:
-                    mapsu = None
-                if mapsu:
-                    md += f"  \n  [Lihat di Google Maps]({mapsu})"
-                st.markdown(md)
-        else:
-            st.info("Belum ada data toko.")
-
-        st.markdown("---")
-        st.subheader("Daily Menu")
-        t = st.date_input("Tanggal menu", datetime.now().date())
-        t_str = t.isoformat()
-        n_items = st.number_input("Jumlah item menu per hari", min_value=1, max_value=20, value=6)
-        avoid_days = st.number_input("Hindari varian dari X hari terakhir", min_value=0, max_value=30, value=2)
-        if st.button("Generate menu untuk tanggal (jika belum ada)"):
-            items, created = get_or_create_daily_menu(t_str, n_items=n_items, avoid_recent_days=avoid_days)
-            if created:
-                st.success(f"Menu untuk {t_str} berhasil digenerate dan disimpan.")
-            else:
-                st.info(f"Menu untuk {t_str} sudah ada (tidak digenerate ulang).")
-            if items:
-                st.write("Menu:")
-                for it in items:
-                    st.write(f"- {it.get('name')} {it.get('variant_name')} → Rp {it.get('price'):,} (stok: {it.get('stock')})")
-            else:
-                st.warning("Tidak ada item untuk menu ini.")
-        if st.button("Regenerate (paksa) untuk tanggal"):
-            items, created = get_or_create_daily_menu(t_str, force_regenerate=True, n_items=n_items, avoid_recent_days=avoid_days)
-            st.success(f"Menu untuk {t_str} telah di-regenerate (force).")
-            if items:
-                for it in items:
-                    st.write(f"- {it.get('name')} {it.get('variant_name')} → Rp {it.get('price'):,} (stok: {it.get('stock')})")
-
-# ---------------- Orders ----------------
-elif menu == "Orders":
-    st.header("Daftar Orders")
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM orders ORDER BY id DESC")
-    orders = cur.fetchall()
-    if not orders:
-        st.info("Belum ada order.")
-    for o in orders:
-        st.markdown("---")
-        st.write(f"Order ID: {o['id']} | Nama: {o['customer_name']} | Total: Rp {o['total']:,} | Status: {o['status']} | {o['created_at']}")
-        if o["store_id"]:
-            s = get_store_by_id(o["store_id"])
-            if s:
-                st.write(f"Ambil di: {s['name']} — {s['address']}")
-                url = maps_url_for_store_row(s)
-                if url:
-                    st.markdown(f"[Lihat di Google Maps]({url})")
-        if o["delivery_address"]:
-            st.write(f"Alamat kirim: {o['delivery_address']}")
-        cur2 = conn.cursor()
-        cur2.execute("SELECT oi.qty, oi.price, p.name, pv.variant_name FROM order_items oi JOIN products p ON oi.product_id=p.id LEFT JOIN product_variants pv ON oi.variant_id=pv.id WHERE oi.order_id=?", (o['id'],))
-        items = cur2.fetchall()
-        for it in items:
-            st.write(f"- {it['name']} {it['variant_name']} x{it['qty']} → Rp {it['price']*it['qty']:,}")
-    conn.close()
+# Hanya jalankan UI ketika skrip dieksekusi langsung
+if __name__ == "__main__":
+    main()
