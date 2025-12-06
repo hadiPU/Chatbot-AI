@@ -42,4 +42,4 @@ EXPOSE 8501
 ENV PORT=8501
 
 # Entrypoint: run streamlit headless on 0.0.0.0
-ENTRYPOINT ["sh", "-c", "streamlit run app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true"]
+ENTRYPOINT ["sh", "-c", "streamlit run chatbot_only.py --server.port $PORT --server.address 0.0.0.0 --server.headless true"]
