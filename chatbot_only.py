@@ -24,6 +24,7 @@ except Exception as e:
     APP_OK = False
     APP_ERR = str(e)
 
+
 # ---- wrapper to call Gemini (tries app.call_gemini_chat first, else google.genai) ----
 def _call_gemini(prompt: str, api_key: str, system_prompt: str = "", model: str = "gemini-2.5-flash") -> str:
     import traceback, time
@@ -36,7 +37,7 @@ def _call_gemini(prompt: str, api_key: str, system_prompt: str = "", model: str 
             print("ERROR call_gemini_chat:", e)
             print(traceback.format_exc())
 
-    # Fallback ke google-genai
+    # fallback ke google-genai
     try:
         import google.genai as genai
         from google.genai import types
@@ -64,11 +65,9 @@ def _call_gemini(prompt: str, api_key: str, system_prompt: str = "", model: str 
         return f"Gagal menghubungi Gemini: {e}"
 
 
-
 # ---- env API key and default usage flag ----
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
 DEFAULT_USE_GEMINI = bool(GEMINI_API_KEY)
-
 # ---- Modernized CSS with light theme + typing animation ----
 CSS = """
 <style>
@@ -82,7 +81,6 @@ CSS = """
   --muted:#9fb0c8;
   --text:#e7eef6;
   --accent:#39a7ff;
-  --glass: rgba(255,255,255,0.03);
 
   --bg-light:#f5f7fb;
   --panel-light:#ffffff;
@@ -94,155 +92,65 @@ CSS = """
   --accent-light:#2b6cb0;
 }
 
-/* Base reset */
 *{box-sizing:border-box}
-body { margin:0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
+body { margin:0; font-family: Inter, ui-sans-serif, system-ui; }
 
-/* wrapper used to toggle theme by adding class 'chat-light' or 'chat-dark' on document.body */
-.wrapper { padding:24px 0; display:flex; justify-content:center; align-items:flex-start; }
+.wrapper { padding:24px 0; display:flex; justify-content:center; }
 
-/* chat container */
-.chat-wrap { width:820px; max-width:96vw; border-radius:18px; overflow:hidden; box-shadow: 0 12px 40px rgba(2,6,23,0.6); border: 1px solid rgba(255,255,255,0.02); }
+.chat-wrap { width:820px; max-width:96vw; border-radius:18px; overflow:hidden; }
 
-/* dark theme (default) variables */
-.chat-wrap.dark {
-  background: linear-gradient(180deg, var(--panel-dark), #071018);
-  color: var(--text);
-}
-.chat-wrap.dark .header { background: linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-bottom: 1px solid rgba(255,255,255,0.03); }
-.chat-wrap.dark .logo { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.08)); color:var(--text); }
-.chat-wrap.dark .title, .chat-wrap.dark .sub { color:var(--text); }
-.chat-wrap.dark .messages { background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(0,0,0,0.03)); }
-.chat-wrap.dark .bubble.bot { background: linear-gradient(180deg, rgba(20,46,58,0.92), rgba(11,30,40,0.92)); color:var(--text); }
-.chat-wrap.dark .bubble.user { background: linear-gradient(180deg, var(--user), #3bd4ff); color:#01242e; box-shadow: 0 6px 18px rgba(3,90,116,0.16); }
-.chat-wrap.dark .qbtn { color:var(--text); border-color: rgba(255,255,255,0.05); }
-.chat-wrap.dark .input-field { background: rgba(255,255,255,0.015); color:var(--text); border:1px solid rgba(255,255,255,0.03); }
-.chat-wrap.dark .send { background: var(--accent); color:#04293e; }
+.chat-wrap.dark { background: linear-gradient(180deg, var(--panel-dark), #071018); color: var(--text); }
+.chat-wrap.light { background: var(--panel-light); color: var(--text-light); }
 
-/* light theme overrides */
-.chat-wrap.light {
-  background: linear-gradient(180deg, var(--panel-light), var(--panel-light));
-  color: var(--text-light);
-  border: 1px solid rgba(11,18,32,0.04);
-}
-.chat-wrap.light .header { background: var(--header-light); border-bottom: 1px solid rgba(11,18,32,0.04); }
-.chat-wrap.light .logo { background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01)); color:var(--text-light); }
-.chat-wrap.light .title, .chat-wrap.light .sub { color:var(--text-light); }
-.chat-wrap.light .messages { background: var(--card-light); }
-.chat-wrap.light .bubble.bot { background: var(--bot-light); color:var(--text-light); border:1px solid rgba(11,18,32,0.03); }
-.chat-wrap.light .bubble.user { background: linear-gradient(180deg, #9feeff, #62d8ff); color:#00323a; }
-.chat-wrap.light .qbtn { color:var(--text-light); border-color: rgba(11,18,32,0.06); background: rgba(0,0,0,0.01); }
-.chat-wrap.light .input-field { background: #ffffff; color:var(--text-light); border:1px solid rgba(11,18,32,0.06); }
-.chat-wrap.light .send { background: var(--accent-light); color:#fff; }
-
-/* common layout */
 .header { display:flex; align-items:center; gap:16px; padding:18px 20px; }
-.logo { width:56px; height:56px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; border:1px solid rgba(255,255,255,0.03); box-shadow: 0 6px 18px rgba(2,6,23,0.45) inset; }
-.title { font-weight:800; font-size:18px; letter-spacing:0.2px; }
-.sub { font-size:13px; margin-top:2px; opacity:0.95; }
+.logo { width:56px; height:56px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-weight:800; }
 
-/* messages area */
-.content { display:flex; gap:0; flex-direction:column; }
 .messages-wrap { padding:18px; }
-.messages { height:520px; min-height:240px; max-height:72vh; padding:18px; border-radius:12px; display:flex; flex-direction:column; justify-content:flex-end; gap:14px; overflow-y:auto; }
+.messages { height:520px; overflow-y:auto; display:flex; flex-direction:column; gap:14px; }
 
-/* message row */
-.msg-row { display:flex; gap:12px; align-items:flex-end; width:100%; }
+.bubble { padding:12px 16px; border-radius:12px; max-width:78%; line-height:1.5; }
+.bubble.bot { background: var(--bot-dark); }
+.bubble.user { background: var(--user); color:#01242e; margin-left:auto; }
 
-/* avatar */
-.avatar { width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:12px; border:1px solid rgba(255,255,255,0.03); }
-
-/* bubbles */
-.bubble {
-  padding:12px 16px; border-radius:12px; max-width:78%; line-height:1.5; word-break:break-word; border:1px solid rgba(255,255,255,0.02);
-}
-.bubble.bot { box-shadow: 0 8px 28px rgba(2,6,23,0.55); border-top-left-radius:8px; }
-.bubble.user { border-top-right-radius:8px; margin-left:auto; box-shadow: 0 6px 18px rgba(3,90,116,0.08); }
-
-/* timestamp */
 .ts { font-size:11px; color:var(--muted); margin-top:6px; }
 
-/* quick replies */
-.qrow { display:flex; gap:10px; flex-wrap:wrap; padding:14px 18px; border-top:1px solid rgba(255,255,255,0.02); background:transparent; }
-.qbtn { padding:9px 14px; border-radius:999px; background:transparent; cursor:pointer; font-size:13px; transition:all .18s ease; box-shadow: 0 4px 10px rgba(2,6,23,0.12); }
-.qbtn:hover { transform:translateY(-3px); }
+.qrow { display:flex; gap:10px; padding:12px; flex-wrap:wrap; }
+.qbtn { padding:9px 14px; border-radius:999px; cursor:pointer; font-size:13px; }
 
-/* input */
-.input-bar { display:flex; gap:10px; padding:16px 18px; align-items:center; border-top:1px solid rgba(255,255,255,0.02); }
-.input-field { flex:1; padding:12px 14px; border-radius:999px; font-size:14px; }
-.send { padding:9px 16px; border-radius:999px; font-weight:700; border:none; cursor:pointer; transition: transform .12s ease; }
-.send:hover { transform: translateY(-2px); }
-
-/* status & note */
-.status { padding:8px 14px; margin:8px 16px; border-radius:10px; font-size:13px; color:var(--muted); }
-.note { padding:12px 16px 18px 16px; font-size:13px; color:var(--muted); }
-.error { padding:10px 16px; color:#d14343; background:#ffdcdc33; border-radius:8px; margin:8px 16px; }
-
-/* overlay (full-screen) with typing animation */
-.chat-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  background: rgba(2,6,23,0.72);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color: #fff;
-  font-size:18px;
-  font-weight:700;
-  backdrop-filter: blur(6px);
-  text-align:center;
-  padding:20px;
-}
-.typing-box { display:flex; flex-direction:column; align-items:center; gap:8px; }
-.typing-line { font-size:18px; font-weight:700; color: #fff; opacity:0.98; }
-.dots { display:flex; gap:8px; align-items:flex-end; height:18px; }
-.dots span {
-  width:10px; height:10px; background: #fff; border-radius:50%; display:inline-block; transform: translateY(0);
-  animation: dotUp 1s infinite ease-in-out;
-  opacity:0.95;
-}
-.dots span:nth-child(2) { animation-delay: 0.15s; }
-.dots span:nth-child(3) { animation-delay: 0.3s; }
-@keyframes dotUp {
-  0% { transform: translateY(0); opacity:0.6; }
-  40% { transform: translateY(-8px); opacity:1; }
-  80% { transform: translateY(0); opacity:0.6; }
-  100% { transform: translateY(0); opacity:0.6; }
-}
-
-/* responsive */
-@media (max-width:640px){
-  .chat-wrap { width: 96vw; border-radius:12px; }
-  .messages { height: 60vh; padding:12px; gap:10px; }
-  .header { padding:12px; }
-}
+.input-bar { display:flex; gap:10px; padding:16px; }
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
 
-# ---- session state init ----
+
+# ---- session state initialization ----
 if "chat_history" not in st.session_state:
-    st.session_state.chat_history = [
-        {"who": "bot", "text": "Halo! Saya Chatbot Warung Makan Bu Yuni. Ada yang bisa saya bantu? 😊", "ts": datetime.now().isoformat()}
-    ]
+    st.session_state.chat_history = [{
+        "who": "bot",
+        "text": "Halo! Saya Chatbot Warung Makan Bu Yuni. Ada yang bisa saya bantu? 😊",
+        "ts": datetime.now().isoformat()
+    }]
+
 if "chat_input" not in st.session_state:
     st.session_state.chat_input = ""
+
 if "processing_lock" not in st.session_state:
     st.session_state.processing_lock = False
+
 if "use_gemini_ui" not in st.session_state:
     st.session_state.use_gemini_ui = DEFAULT_USE_GEMINI
+
 if "theme" not in st.session_state:
-    # 'dark' or 'light'
     st.session_state.theme = "dark"
 
-# small dedupe state
 if "last_user_msg" not in st.session_state:
     st.session_state.last_user_msg = None
+
 if "last_bot_msg" not in st.session_state:
     st.session_state.last_bot_msg = None
 
-# ---- helper: build context for Gemini prompt (stores + product summary) ----
+
+# ---- context builder for Gemini ----
 def _build_context_for_gemini():
     lokasi_info = ""
     prod_summary = ""
@@ -250,43 +158,28 @@ def _build_context_for_gemini():
         if APP_OK:
             stores = list_stores()
             if stores:
-                lines = []
-                for s in stores:
-                    try:
-                        name = s["name"]
-                        addr = s["address"] or ""
-                        phone = s["phone"] or ""
-                    except Exception:
-                        name = s.get("name", "")
-                        addr = s.get("address", "")
-                        phone = s.get("phone", "")
-                    url = maps_url_for_store_row(s)
-                    if url:
-                        lines.append(f"{name} — {addr} (Tel: {phone}) | MAPS: {url}")
-                    else:
-                        lines.append(f"{name} — {addr} (Tel: {phone})")
-                lokasi_info = "\n".join(lines)
-        try:
-            if 'get_product_summary_text' in globals():
-                prod_summary = get_product_summary_text(limit=12)
-        except Exception:
-            prod_summary = ""
-    except Exception:
+                lokasi_info = "\n".join([
+                    f"{s.get('name','')} — {s.get('address','')} (Tel: {s.get('phone','')})"
+                    for s in stores
+                ])
+        if 'get_product_summary_text' in globals():
+            prod_summary = get_product_summary_text(limit=12)
+    except:
         pass
     return lokasi_info, prod_summary
-
-# ---- core local logic (safe sqlite3 usage) ----
+# ---- core local logic ----
 def local_logic(q: str) -> str:
     ql = q.lower().strip()
 
-    # Harga detection (ketat: harus awalan cek harga/harga/berapa harga)
+    # Harga detection
     m = None
     if ql.startswith("cek harga ") or ql.startswith("harga ") or ql.startswith("berapa harga "):
-        m = re.match(r"^(?:cek\s+harga|berapa\s+harga|harga)\s+(.+)$", ql)
-    if m:
-        prod_query = m.group(1).strip(" ?!.")
-        if not prod_query:
-            return "Sebutkan nama produk setelah kata 'harga', mis. 'cek harga nasi goreng'."
+        import sqlite3
+        try:
+            prod_query = ql.split(" ", 2)[-1]
+        except:
+            return "Format pencarian harga tidak valid."
+
         try:
             conn = sqlite3.connect("db.sqlite")
             conn.row_factory = sqlite3.Row
@@ -296,51 +189,49 @@ def local_logic(q: str) -> str:
                 SELECT p.name AS pname, pv.variant_name AS vname, pv.price AS price, pv.stock AS stock
                 FROM product_variants pv
                 JOIN products p ON pv.product_id = p.id
-                WHERE lower(p.name) LIKE lower(?) OR lower(pv.variant_name) LIKE lower(?) OR lower(p.category) LIKE lower(?)
-                ORDER BY CASE WHEN pv.stock>0 THEN 0 ELSE 1 END, pv.price ASC
+                WHERE lower(p.name) LIKE lower(?)
+                   OR lower(pv.variant_name) LIKE lower(?)
+                   OR lower(p.category) LIKE lower(?)
+                ORDER BY pv.price ASC
                 LIMIT 10
             """, (pat, pat, pat))
             rows = cur.fetchall()
             conn.close()
         except Exception as e:
-            return f"Gagal membuka database: {e}"
-        if not rows:
-            return f"Tidak menemukan produk yang cocok untuk '{prod_query}'. Coba kata kunci lain atau periksa Admin."
-        lines = [f"Hasil pencarian harga untuk '{prod_query}':"]
-        for r in rows:
-            name = r["pname"]
-            variant = r["vname"] or "-"
-            price = int(r["price"] or 0)
-            stock = r["stock"] if r["stock"] is not None else "tidak diketahui"
-            lines.append(f"- {name} ({variant}) → Rp {price:,}  •  Stok: {stock}")
-        return "\n".join(lines)
+            return f"Gagal akses database: {e}"
 
-    # Lokasi
-    if any(k in ql for k in ["lokasi","alamat","di mana","cabang","store","toko terdekat","di mana toko"]):
-        if APP_OK:
-            try:
-                stores = list_stores()
-            except Exception as e:
-                return f"Gagal mengakses data toko: {e}"
-            if not stores:
-                return "Belum ada data toko. Silakan tambahkan di Admin."
-            out = ["Lokasi Toko / Cabang:"]
-            for s in stores:
-                try:
-                    name = s["name"]
-                    addr = s["address"] or ""
-                    phone = s["phone"] or ""
-                except Exception:
-                    name = s.get("name", "")
-                    addr = s.get("address", "")
-                    phone = s.get("phone", "")
-                url = maps_url_for_store_row(s)
-                line = f"- {name}: {addr} (Tel: {phone})"
-                if url:
-                    line += f"  \n  👉 {url}"
-                out.append(line)
-            return "\n".join(out)
-        return "Fungsi lokasi tidak tersedia."
+        if not rows:
+            return f"Tidak menemukan produk untuk '{prod_query}'."
+
+        out = [f"Hasil pencarian harga untuk '{prod_query}':"]
+        for r in rows:
+            out.append(f"- {r['pname']} ({r['vname']}) → Rp {int(r['price']):,}")
+        return "\n".join(out)
+
+    # Lokasi toko
+    if any(k in ql for k in ["lokasi", "alamat", "di mana", "cabang", "store"]):
+        if not APP_OK:
+            return "Fitur lokasi tidak tersedia."
+
+        try:
+            stores = list_stores()
+        except Exception as e:
+            return f"Gagal mengambil data lokasi: {e}"
+
+        if not stores:
+            return "Belum ada data toko."
+
+        out = ["Lokasi toko:"]
+        for s in stores:
+            name = s.get("name", "")
+            addr = s.get("address", "")
+            phone = s.get("phone", "")
+            url = maps_url_for_store_row(s)
+            line = f"- {name}: {addr} (Tel: {phone})"
+            if url:
+                line += f"\n  👉 {url}"
+            out.append(line)
+        return "\n".join(out)
 
     # Produk termurah
     if "termurah" in ql:
@@ -349,22 +240,27 @@ def local_logic(q: str) -> str:
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
             cur.execute("""
-                SELECT p.name AS pname, pv.variant_name AS vname, pv.price AS price, pv.stock AS stock
-                FROM products p JOIN product_variants pv ON p.id = pv.product_id
+                SELECT p.name AS pname, pv.variant_name AS vname, pv.price AS price
+                FROM product_variants pv
+                JOIN products p ON pv.product_id = p.id
                 WHERE pv.stock > 0
                 ORDER BY pv.price ASC
-                LIMIT 10
+                LIMIT 5
             """)
             rows = cur.fetchall()
             conn.close()
         except Exception as e:
-            return f"Gagal akses DB untuk produk termurah: {e}"
+            return f"Gagal akses DB: {e}"
+
         if not rows:
-            return "Belum ada produk dengan stok > 0."
-        lines = ["Top produk termurah (dengan stok):"]
-        for r in rows[:5]:
-            lines.append(f"- {r['pname']} {r['vname']} → Rp {int(r['price']):,} (stok: {r['stock']})")
-        return "\n".join(lines)
+            return "Belum ada produk dengan stok."
+
+        return "\n".join([
+            "Top produk termurah:"
+        ] + [
+            f"- {r['pname']} {r['vname']} → Rp {int(r['price']):,}"
+            for r in rows
+        ])
 
     # Produk terlaris
     if "terlaris" in ql or "paling laku" in ql:
@@ -373,61 +269,69 @@ def local_logic(q: str) -> str:
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
             cur.execute("""
-                SELECT p.name AS pname, pv.variant_name AS vname, pv.sold_count AS sold, pv.price AS price, pv.stock AS stock
-                FROM product_variants pv JOIN products p ON pv.product_id = p.id
-                WHERE pv.sold_count > 0
+                SELECT p.name AS pname, pv.variant_name AS vname, pv.sold_count AS sold
+                FROM product_variants pv
+                JOIN products p ON pv.product_id = p.id
+                WHERE pv.stock > 0
                 ORDER BY pv.sold_count DESC
-                LIMIT 10
+                LIMIT 5
             """)
             rows = cur.fetchall()
             conn.close()
         except Exception as e:
-            return f"Gagal akses DB untuk produk terlaris: {e}"
-        if not rows:
-            return "Belum ada data penjualan/terlaris."
-        lines = ["Top produk terlaris:"]
-        for r in rows[:5]:
-            lines.append(f"- {r['pname']} {r['vname']} (terjual: {r['sold']}) → Rp {int(r['price']):,} (stok: {r['stock']})")
-        return "\n".join(lines)
+            return f"Gagal mengambil data terlaris: {e}"
 
-    # Menu harian (tambah dukungan 'besok')
+        if not rows:
+            return "Data terlaris belum tersedia."
+
+        return "\n".join([
+            "Produk terlaris:"
+        ] + [
+            f"- {r['pname']} {r['vname']} (terjual: {r['sold']})"
+            for r in rows
+        ])
+
+    # Menu harian
     if "menu" in ql:
-        if APP_OK:
-            try:
-                offset = 1 if "besok" in ql or "besoknya" in ql else 0
-                date_str = (datetime.now().date() + timedelta(days=offset)).isoformat()
-                items = get_daily_menu_from_db(date_str)
-            except Exception as e:
-                return f"Gagal ambil menu: {e}"
-            if not items:
-                return f"Menu untuk {date_str} belum tersedia."
-            out = [f"Menu untuk {date_str}:"]
-            for it in items:
-                out.append(f"- {it.get('name')} {it.get('variant_name')} → Rp{int(it.get('price',0)):,} (stok: {it.get('stock','?')})")
-            return "\n".join(out)
-        return "Fungsi menu tidak tersedia."
+        if not APP_OK:
+            return "Fitur menu tidak tersedia."
+
+        offset = 1 if "besok" in ql else 0
+        date = (datetime.now().date() + timedelta(days=offset)).isoformat()
+
+        try:
+            items = get_daily_menu_from_db(date)
+        except Exception as e:
+            return f"Gagal mengambil menu: {e}"
+
+        if not items:
+            return f"Menu untuk {date} belum tersedia."
+
+        return "\n".join(
+            [f"Menu untuk {date}:"] +
+            [f"- {it['name']} {it.get('variant_name','')} → Rp{int(it['price']):,}" for it in items]
+        )
 
     # Greetings
-    if any(g in ql for g in ["halo","hai","hello"]):
-        return "Halo! Saya Chatbot Warung Taburai. Coba tanya: 'menu hari ini', 'lokasi toko', atau 'cek harga [produk]'."
+    if any(k in ql for k in ["halo", "hai", "hello"]):
+        return "Halo! Silakan tanya 'menu hari ini', 'lokasi', atau 'cek harga [produk]' 😊"
 
     return None
-
-# ---- function to process a message (either quick or typed) ----
+# ---- PROCESS MESSAGE (ANTI-FREEZE FIX) ----
 def process_message(q: str):
     import traceback
 
-    q_str = (q or "").trim() if hasattr((q or ""), "trim") else (q or "").strip()
+    q_str = (q or "").strip()
     if not q_str:
         return
 
-    # Mencegah freeze: jangan proses lagi kalau lock masih aktif
+    # ---- Anti-freeze: jangan proses jika masih locked ----
     if st.session_state.get("processing_lock"):
         return
 
     st.session_state.processing_lock = True
 
-    # Simpan pesan user
+    # ---- Simpan pesan user ----
     st.session_state.chat_history.append({
         "who": "user",
         "text": escape(q_str),
@@ -435,22 +339,32 @@ def process_message(q: str):
     })
 
     ql = q_str.lower()
+
+    # Intent untuk memaksa Gemini
     force_gemini_intent = any(k in ql for k in ["rekomendasi", "sarankan", "saran"])
-    forced_local = any(k in ql for k in ["termurah", "terlaris", "harga", "menu", "lokasi", "alamat", "stok", "cek harga"])
+
+    # Intent untuk memaksa lokal saja
+    forced_local = any(k in ql for k in [
+        "termurah", "terlaris", "harga", "menu", "lokasi", "alamat", "stok", "cek harga"
+    ])
 
     status = st.empty()
-    overlay = None
+    overlay = st.empty()
     bot_reply = None
 
     try:
+        # =========================================
+        #  MODE DECISION: LOCAL VS GEMINI
+        # =========================================
         use_gemini = False
-        if not forced_local and GEMINI_API_KEY:
+        if GEMINI_API_KEY and not forced_local:
             if force_gemini_intent or st.session_state.get("use_gemini_ui"):
                 use_gemini = True
 
-        # ==== MODE GEMINI ====
+        # =========================================
+        #  MODE GEMINI
+        # =========================================
         if use_gemini:
-            overlay = st.empty()
             overlay.markdown("""
             <div class="chat-overlay">
                 <div class="typing-box">
@@ -462,34 +376,41 @@ def process_message(q: str):
 
             status.info("Menghubungi Gemini...")
 
+            # siapkan konteks dari database dan toko
             lokasi_info, prod_summary = _build_context_for_gemini()
 
-            system_prompt = (
-                "Kamu adalah asisten toko online. Jawab singkat & jelas. "
-                "Jangan beri alamat / link maps kecuali ditanya."
+            base_system = (
+                "Kamu adalah asisten toko online. "
+                "Jawab singkat, jelas, ramah, dan langsung ke poin. "
+                "Jangan berikan link/alamat/maps kecuali jika user bertanya eksplisit."
             )
 
-            full_system = system_prompt
+            full_system = base_system
             if prod_summary:
                 full_system += "\n\nRingkasan produk:\n" + prod_summary
             if lokasi_info:
                 full_system += "\n\nData toko:\n" + lokasi_info
 
             bot_reply = _call_gemini(
-                f"Pertanyaan: {q_str}\nJawab jelas dan ringkas.",
+                f"Pertanyaan pengguna: {q_str}\nJawab jelas dan ringkas.",
                 GEMINI_API_KEY,
                 full_system
             )
 
             status.empty()
+            overlay.empty()
 
-        # ==== MODE LOCAL ====
+        # =========================================
+        #  MODE LOKAL
+        # =========================================
         else:
             bot_reply = local_logic(q_str)
 
+        # fallback jika local logic tidak balas
         if not bot_reply:
             bot_reply = "Maaf, saya tidak mengerti pertanyaan Anda."
 
+        # simpan balasan bot
         st.session_state.chat_history.append({
             "who": "bot",
             "text": escape(bot_reply),
@@ -500,7 +421,6 @@ def process_message(q: str):
     except Exception as e:
         print("ERROR process_message:", e)
         print(traceback.format_exc())
-
         st.session_state.chat_history.append({
             "who": "bot",
             "text": f"Terjadi error internal: {e}",
@@ -508,146 +428,103 @@ def process_message(q: str):
         })
 
     finally:
-        # PENTING: anti-freeze
+        # ---- ANTI-FREEZE WAJIB ----
         st.session_state.processing_lock = False
         st.session_state.chat_input = ""
 
-        try: status.empty()
-        except: pass
+        try:
+            status.empty()
+        except:
+            pass
 
         try:
-            if overlay: overlay.empty()
-        except: pass
+            overlay.empty()
+        except:
+            pass
+# ==== UI BUILD (HEADER + THEME TOGGLES) ====
 
-
-# quick reply handler
-def handle_quick(val: str):
-    process_message(val)
-
-# ---- UI build ----
-
-# Header (title + toggles) must be placed before we apply page-level CSS override,
-# so we can update st.session_state.theme immediately and then inject page styles.
 logo_path = "logo.png"
 if os.path.exists(logo_path):
-    logo_html = f'<img src="{logo_path}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">'
+    logo_html = (
+        f'<img src="{logo_path}" '
+        'style="width:100%;height:100%;object-fit:cover;border-radius:10px;">'
+    )
 else:
-    logo_html = "<div style='width:100%;height:100%;display:flex;align-items:center;justify-content:center'>WBY</div>"
+    logo_html = (
+        "<div style='width:100%;height:100%;display:flex;"
+        "align-items:center;justify-content:center;font-weight:800'>WBY</div>"
+    )
 
-# header layout (title + toggles)
-col1, col2 = st.columns([8,2])
+# --- Layout Header ---
+col1, col2 = st.columns([8, 2])
+
 with col1:
     st.markdown(f"""
     <div class="header">
-      <div class="logo">{logo_html}</div>
-      <div>
-        <div class="title">Warung Makan Bu Yuni</div>
-        <div class="sub">Online</div>
-      </div>
+        <div class="logo">{logo_html}</div>
+        <div>
+            <div class="title">Warung Makan Bu Yuni</div>
+            <div class="sub">Online</div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
 with col2:
-    # Gemini toggle
-    tooltip = "Jika aktif dan GEMINI_API_KEY tersedia di environment, chatbot akan menggunakan Gemini. Matikan untuk pakai mode lokal."
-    st.session_state.use_gemini_ui = st.checkbox("Gunakan Gemini", value=st.session_state.use_gemini_ui, help=tooltip)
+    # Toggle Gemini
+    tooltip = (
+        "Jika aktif dan GEMINI_API_KEY tersedia di environment, chatbot akan "
+        "menggunakan Gemini. Matikan untuk mode lokal."
+    )
+    st.session_state.use_gemini_ui = st.checkbox(
+        "Gunakan Gemini",
+        value=st.session_state.use_gemini_ui,
+        help=tooltip
+    )
 
-    # Theme toggle (dark / light)
-    # read current theme to set index correctly
+    # Theme toggle
     theme_index = 0 if st.session_state.theme == "dark" else 1
-    theme_choice = st.radio("Tema", options=["dark", "light"], index=theme_index, horizontal=True)
-
-    # ---- IMPORTANT: apply theme selection IMMEDIATELY so subsequent CSS uses current value ----
+    theme_choice = st.radio(
+        "Tema",
+        options=["dark", "light"],
+        index=theme_index,
+        horizontal=True
+    )
     st.session_state.theme = theme_choice
 
-# ---- Apply page-level overrides based on theme (immediately after selection) ----
+
+# ==== APPLY PAGE-LEVEL THEME CSS ====
+
 if st.session_state.theme == "light":
     st.markdown("""
     <style>
-      /* 1. FORCE BACKGROUND & TEXT GLOBAL */
       .stApp {
         background-color: #f2f4f8 !important;
         color: #0b1220 !important;
       }
-      
-      /* 2. HEADER & TEXT ELEMENTS */
-      h1, h2, h3, h4, h5, h6, p, label, .stMarkdown {
+      h1,h2,h3,h4,h5,h6,p,label,.stMarkdown {
         color: #0b1220 !important;
       }
-
-      /* 3. PERBAIKAN TOMBOL (QUICK OPTION & KIRIM) */
-      /* Paksa tombol menjadi Putih dengan Border dan Teks Hitam */
       div[data-testid="stButton"] button {
         background-color: #ffffff !important;
         color: #0b1220 !important;
-        border: 1px solid #d1d5db !important; /* Border abu-abu */
+        border: 1px solid #d1d5db !important;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
       }
-      /* Efek Hover tombol */
       div[data-testid="stButton"] button:hover {
-        background-color: #e0e7ff !important; /* Biru muda saat hover */
+        background-color: #e0e7ff !important;
         border-color: #39a7ff !important;
-        color: #000000 !important;
       }
-      /* Efek Klik (Active) */
-      div[data-testid="stButton"] button:active {
-        background-color: #c7d2fe !important;
-        color: #000000 !important;
-      }
-
-      /* 4. PERBAIKAN INPUT TEXT (KOLOM KETIK) */
-      /* Bagian dalam input */
       div[data-testid="stTextInput"] input {
         background-color: #ffffff !important;
         color: #0b1220 !important;
-        border: 1px solid #d1d5db !important;
+        border:1px solid #d1d5db !important;
       }
-      /* Placeholder text (teks samar 'Tulis pesan...') */
       div[data-testid="stTextInput"] input::placeholder {
-        color: #6b7280 !important; /* Abu-abu gelap */
-        opacity: 1 !important;
-      }
-      /* Label input (jika ada) */
-      div[data-testid="stTextInput"] label {
-        color: #0b1220 !important;
-      }
-
-      /* 5. CHAT CONTAINER & BUBBLES LIGHT */
-      .chat-wrap.light {
-        background: #ffffff !important;
-        border: 1px solid rgba(0,0,0,0.1) !important;
-      }
-      .chat-wrap.light .messages {
-        background: #f8fafc !important; /* Abu-abu sangat muda */
-      }
-      .chat-wrap.light .bubble.bot {
-        background: #eaf3ff !important; /* Biru Bot Sangat Muda */
-        color: #0b1220 !important;
-        border: 1px solid #e2e8f0 !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
-      }
-      .chat-wrap.light .bubble.user {
-        background: linear-gradient(180deg, #bae6fd, #7dd3fc) !important;
-        color: #0c4a6e !important;
-        border: none !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
-      }
-      .chat-wrap.light .ts {
-        color: #64748b !important;
-      }
-      
-      /* 6. LOGO & HEADER WRAPPER */
-      .chat-wrap.light .header {
-        background: #ffffff !important;
-        border-bottom: 1px solid #e2e8f0 !important;
-      }
-      .chat-wrap.light .title, .chat-wrap.light .sub {
-        color: #0f172a !important;
+        color: #6b7280 !important;
       }
     </style>
     """, unsafe_allow_html=True)
 
-    # Inject class for body (helper JS)
     components.html("""
     <script>
       const body = window.parent.document.body;
@@ -656,8 +533,7 @@ if st.session_state.theme == "light":
     </script>
     """, height=0, width=0)
 
-else:
-    # --- DARK THEME DEFAULT ---
+else:  # DARK MODE
     st.markdown("""
     <style>
       .stApp {
@@ -674,11 +550,7 @@ else:
       body.classList.remove('chat-light');
     </script>
     """, height=0, width=0)
-    
-if not APP_OK:
-    st.markdown(f'<div class="error">Warning: gagal mengimpor helper dari <code>app.py</code> — {APP_ERR}</div>', unsafe_allow_html=True)
-
-# messages
+# ==== MESSAGES RENDERING ====
 st.markdown('<div class="content"><div class="messages-wrap"><div class="messages" id="messages">', unsafe_allow_html=True)
 for msg in st.session_state.chat_history:
     who = msg.get("who")
@@ -710,7 +582,8 @@ for msg in st.session_state.chat_history:
         ''', unsafe_allow_html=True)
 st.markdown('</div></div>', unsafe_allow_html=True)
 
-# improved auto-scroll using MutationObserver; also try to restore focus to input
+
+# ==== Auto-scroll + focus helper (MutationObserver) ====
 components.html(
     """
     <script>
@@ -730,7 +603,7 @@ components.html(
       // initial short delay to allow Streamlit render
       setTimeout(()=>scrollToBottom(false), 80);
 
-      // setup observer to auto-scroll when children change
+      // observer to auto-scroll when new messages are added
       if(container){
         const obs = new MutationObserver((mutations) => {
           let added = mutations.some(m => m.addedNodes && m.addedNodes.length > 0);
@@ -741,7 +614,7 @@ components.html(
         obs.observe(container, { childList: true, subtree: false });
       }
 
-      // attempt to keep focus on the chat input (match placeholder text)
+      // try focus on chat input
       function focusInput(){
         try{
           const inp = document.querySelector('input[placeholder^="Tulis pesan"]') || document.querySelector('input[placeholder*="cek harga"]');
@@ -755,7 +628,8 @@ components.html(
     height=1,
 )
 
-# quick replies
+
+# ==== Quick replies ====
 st.markdown('<div class="qrow" role="list">', unsafe_allow_html=True)
 quick_options = [
     ("Menu hari ini", "menu hari ini"),
@@ -772,28 +646,26 @@ for label, value in quick_options:
     idx += 1
 st.markdown('</div>', unsafe_allow_html=True)
 
-# Call Back Enter
+
+# ==== Input area ====
 def handle_input():
     user_text = st.session_state.get("chat_input_field", "")
-    
-    if user_text.strip():
+    if user_text and user_text.strip():
         process_message(user_text)
-        
         st.session_state.chat_input_field = ""
 
-# input area UI
 st.markdown('<div class="input-bar">', unsafe_allow_html=True)
 
-# Text Input
 st.text_input(
-    "Pesan", 
-    placeholder="Tulis pesan… (mis. 'cek harga nasi goreng')", 
-    key="chat_input_field", 
+    "Pesan",
+    placeholder="Tulis pesan… (mis. 'cek harga nasi goreng')",
+    key="chat_input_field",
     label_visibility="collapsed",
-    on_change=handle_input 
+    on_change=handle_input
 )
+
 st.button(
-    "Kirim", 
+    "Kirim",
     key="send_btn",
     on_click=handle_input
 )
@@ -801,7 +673,7 @@ st.button(
 st.markdown('</div>', unsafe_allow_html=True)
 
 
-# footer + close wrappers
+# ==== Footer / Note ====
 gemini_note = "Gemini aktif (ENV key tersedia)" if DEFAULT_USE_GEMINI else "Gemini tidak dikonfigurasi (ENV GEMINI_API_KEY kosong)"
 st.markdown(f'<div class="note">Chatbot terhubung dengan <code>app.py</code>. {gemini_note}. Toggle di header bisa override mode Gemini. Tema: {st.session_state.theme}.</div>', unsafe_allow_html=True)
 st.markdown('</div></div>', unsafe_allow_html=True)
