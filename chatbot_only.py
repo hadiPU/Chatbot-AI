@@ -26,27 +26,44 @@ except Exception as e:
 
 # ---- wrapper to call Gemini (tries app.call_gemini_chat first, else google.genai) ----
 def _call_gemini(prompt: str, api_key: str, system_prompt: str = "", model: str = "gemini-2.5-flash") -> str:
-    # prefer app-provided helper if exists
+    import traceback, time
+
+    # Prefer helper dari app.py jika ada
     if 'call_gemini_chat' in globals() and callable(globals().get('call_gemini_chat')):
         try:
             return globals().get('call_gemini_chat')(prompt, api_key, system_prompt, model=model)
         except Exception as e:
-            return f"Gagal memanggil helper app.call_gemini_chat: {e}"
+            print("ERROR call_gemini_chat:", e)
+            print(traceback.format_exc())
 
-    # fallback: try google.genai
+    # Fallback ke google-genai
     try:
         import google.genai as genai
         from google.genai import types
     except Exception as e:
-        return f"Library google-genai tidak tersedia: {e} (pip install google-genai) atau gunakan mode lokal."
+        print("google-genai tidak ditemukan:", e)
+        return "Library google-genai tidak ditemukan di server Docker."
 
     try:
         client = genai.Client(api_key=api_key)
         cfg = types.GenerateContentConfig(system_instruction=system_prompt)
-        resp = client.models.generate_content(model=model, contents=prompt, config=cfg)
+
+        start = time.time()
+        resp = client.models.generate_content(
+            model=model,
+            contents=prompt,
+            config=cfg
+        )
+        print(f"[Gemini] sukses dalam {time.time() - start:.2f}s")
+
         return getattr(resp, "text", str(resp))
+
     except Exception as e:
-        return f"Gagal memanggil Gemini: {e}"
+        print("ERROR Gemini API:", e)
+        print(traceback.format_exc())
+        return f"Gagal menghubungi Gemini: {e}"
+
+
 
 # ---- env API key and default usage flag ----
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
@@ -398,110 +415,110 @@ def local_logic(q: str) -> str:
 
 # ---- function to process a message (either quick or typed) ----
 def process_message(q: str):
-    """
-    Behaviour:
-    - local-only keywords use local_logic
-    - rekomendasi/saran -> Gemini if available
-    - otherwise use Gemini when toggle ON, else local
-    - show full-screen overlay (gelap) + typing animation when Gemini called
-    """
-    q_str = (q or "").strip()
+    import traceback
+
+    q_str = (q or "").trim() if hasattr((q or ""), "trim") else (q or "").strip()
     if not q_str:
         return
 
-    # dedupe
-    if st.session_state.get("last_user_msg") == q_str:
-        return
-
+    # Mencegah freeze: jangan proses lagi kalau lock masih aktif
     if st.session_state.get("processing_lock"):
         return
-    st.session_state.processing_lock = True
-    st.session_state.last_user_msg = q_str
 
-    # append user message
-    st.session_state.chat_history.append({"who": "user", "text": escape(q_str), "ts": datetime.now().isoformat()})
+    st.session_state.processing_lock = True
+
+    # Simpan pesan user
+    st.session_state.chat_history.append({
+        "who": "user",
+        "text": escape(q_str),
+        "ts": datetime.now().isoformat()
+    })
 
     ql = q_str.lower()
     force_gemini_intent = any(k in ql for k in ["rekomendasi", "sarankan", "saran"])
-    local_only_keywords = ["termurah", "terlaris", "harga", "menu", "lokasi", "alamat", "stok", "cek harga"]
-    force_local = any(k in ql for k in local_only_keywords)
+    forced_local = any(k in ql for k in ["termurah", "terlaris", "harga", "menu", "lokasi", "alamat", "stok", "cek harga"])
 
-    if force_gemini_intent and GEMINI_API_KEY:
-        force_local = False
-
-    status_placeholder = st.empty()
+    status = st.empty()
+    overlay = None
     bot_reply = None
 
     try:
-        if force_local:
-            status_placeholder.info("Memproses (lokal)...")
-            try:
-                bot_reply = local_logic(q_str)
-            except Exception as e:
-                bot_reply = f"Error lokal: {e}"
-            status_placeholder.empty()
-        else:
-            use_gemini_now = False
-            if force_gemini_intent and GEMINI_API_KEY:
-                use_gemini_now = True
-            else:
-                use_gemini_now = (st.session_state.get("use_gemini_ui", False) and GEMINI_API_KEY)
+        use_gemini = False
+        if not forced_local and GEMINI_API_KEY:
+            if force_gemini_intent or st.session_state.get("use_gemini_ui"):
+                use_gemini = True
 
-            if use_gemini_now:
-                # show overlay with typing animation
-                overlay_ph = st.empty()
-                overlay_html = """
-                <div class="chat-overlay">
-                  <div class="typing-box">
+        # ==== MODE GEMINI ====
+        if use_gemini:
+            overlay = st.empty()
+            overlay.markdown("""
+            <div class="chat-overlay">
+                <div class="typing-box">
                     <div class="typing-line">Menghubungi Gemini... Mohon tunggu</div>
                     <div class="dots"><span></span><span></span><span></span></div>
-                  </div>
                 </div>
-                """
-                overlay_ph.markdown(overlay_html, unsafe_allow_html=True)
+            </div>
+            """, unsafe_allow_html=True)
 
-                lokasi_info, prod_summary = _build_context_for_gemini()
-                system_prompt = (
-                    "Kamu adalah asisten penjualan untuk toko online. Jawab singkat, jelas, dan akurat.\n"
-                    "PENTING: Jangan sertakan alamat lengkap atau link Google Maps kecuali pengguna secara eksplisit menanyakan lokasi, arah, cara ambil, atau pengiriman."
-                )
-                full_system = system_prompt + ("\n\nRingkasan produk:\n" + prod_summary if prod_summary else "")
-                if lokasi_info:
-                    full_system += "\n\nData toko (untuk lokasi jika diminta):\n" + lokasi_info
+            status.info("Menghubungi Gemini...")
 
-                status_placeholder.info("Menghubungi Gemini — mohon tunggu...")
-                try:
-                    ans = _call_gemini(f"Pertanyaan: {q_str}\n\nJawab singkat dan gunakan data jika relevan.", GEMINI_API_KEY, full_system)
-                    bot_reply = ans
-                except Exception as e:
-                    bot_reply = f"Gagal memanggil Gemini: {e}"
-                status_placeholder.empty()
+            lokasi_info, prod_summary = _build_context_for_gemini()
 
-                # remove overlay
-                overlay_ph.empty()
-            else:
-                status_placeholder.info("Memproses (lokal) - Gemini tidak aktif...")
-                try:
-                    bot_reply = local_logic(q_str)
-                except Exception as e:
-                    bot_reply = f"Error lokal: {e}"
-                status_placeholder.empty()
+            system_prompt = (
+                "Kamu adalah asisten toko online. Jawab singkat & jelas. "
+                "Jangan beri alamat / link maps kecuali ditanya."
+            )
+
+            full_system = system_prompt
+            if prod_summary:
+                full_system += "\n\nRingkasan produk:\n" + prod_summary
+            if lokasi_info:
+                full_system += "\n\nData toko:\n" + lokasi_info
+
+            bot_reply = _call_gemini(
+                f"Pertanyaan: {q_str}\nJawab jelas dan ringkas.",
+                GEMINI_API_KEY,
+                full_system
+            )
+
+            status.empty()
+
+        # ==== MODE LOCAL ====
+        else:
+            bot_reply = local_logic(q_str)
 
         if not bot_reply:
-            bot_reply = "Maaf, saya belum mengerti. Coba 'cek harga [produk]' atau 'menu hari ini'."
+            bot_reply = "Maaf, saya tidak mengerti pertanyaan Anda."
 
-        # append bot reply (dedupe)
-        if st.session_state.get("last_bot_msg") != bot_reply:
-            st.session_state.chat_history.append({"who": "bot", "text": escape(bot_reply), "ts": datetime.now().isoformat()})
-            st.session_state.last_bot_msg = bot_reply
+        st.session_state.chat_history.append({
+            "who": "bot",
+            "text": escape(bot_reply),
+            "ts": datetime.now().isoformat()
+        })
+        st.session_state.last_bot_msg = bot_reply
+
+    except Exception as e:
+        print("ERROR process_message:", e)
+        print(traceback.format_exc())
+
+        st.session_state.chat_history.append({
+            "who": "bot",
+            "text": f"Terjadi error internal: {e}",
+            "ts": datetime.now().isoformat()
+        })
 
     finally:
-        st.session_state.chat_input = ""
+        # PENTING: anti-freeze
         st.session_state.processing_lock = False
+        st.session_state.chat_input = ""
+
+        try: status.empty()
+        except: pass
+
         try:
-            status_placeholder.empty()
-        except Exception:
-            pass
+            if overlay: overlay.empty()
+        except: pass
+
 
 # quick reply handler
 def handle_quick(val: str):
