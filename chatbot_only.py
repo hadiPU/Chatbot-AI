@@ -547,110 +547,117 @@ with col2:
 if st.session_state.theme == "light":
     st.markdown("""
     <style>
-      /* GLOBAL BG + TEXT */
-      body, .stApp, .main, .block-container {
-        background: #f2f4f8 !important;
+      /* 1. FORCE BACKGROUND & TEXT GLOBAL */
+      .stApp {
+        background-color: #f2f4f8 !important;
         color: #0b1220 !important;
       }
-      .stApp * { color: inherit !important; }
+      
+      /* 2. HEADER & TEXT ELEMENTS */
+      h1, h2, h3, h4, h5, h6, p, label, .stMarkdown {
+        color: #0b1220 !important;
+      }
 
-      /* CHAT WRAP LIGHT THEME */
+      /* 3. PERBAIKAN TOMBOL (QUICK OPTION & KIRIM) */
+      /* Paksa tombol menjadi Putih dengan Border dan Teks Hitam */
+      div[data-testid="stButton"] button {
+        background-color: #ffffff !important;
+        color: #0b1220 !important;
+        border: 1px solid #d1d5db !important; /* Border abu-abu */
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+      }
+      /* Efek Hover tombol */
+      div[data-testid="stButton"] button:hover {
+        background-color: #e0e7ff !important; /* Biru muda saat hover */
+        border-color: #39a7ff !important;
+        color: #000000 !important;
+      }
+      /* Efek Klik (Active) */
+      div[data-testid="stButton"] button:active {
+        background-color: #c7d2fe !important;
+        color: #000000 !important;
+      }
+
+      /* 4. PERBAIKAN INPUT TEXT (KOLOM KETIK) */
+      /* Bagian dalam input */
+      div[data-testid="stTextInput"] input {
+        background-color: #ffffff !important;
+        color: #0b1220 !important;
+        border: 1px solid #d1d5db !important;
+      }
+      /* Placeholder text (teks samar 'Tulis pesan...') */
+      div[data-testid="stTextInput"] input::placeholder {
+        color: #6b7280 !important; /* Abu-abu gelap */
+        opacity: 1 !important;
+      }
+      /* Label input (jika ada) */
+      div[data-testid="stTextInput"] label {
+        color: #0b1220 !important;
+      }
+
+      /* 5. CHAT CONTAINER & BUBBLES LIGHT */
       .chat-wrap.light {
         background: #ffffff !important;
-        border: 1px solid rgba(0,0,0,0.12) !important;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.08) !important;
+        border: 1px solid rgba(0,0,0,0.1) !important;
       }
       .chat-wrap.light .messages {
-        background: #f5f7fb !important;
+        background: #f8fafc !important; /* Abu-abu sangat muda */
       }
-
-      /* BUBBLES */
       .chat-wrap.light .bubble.bot {
-        background: #eaf3ff !important;
+        background: #eaf3ff !important; /* Biru Bot Sangat Muda */
         color: #0b1220 !important;
-        border: 1px solid rgba(0,0,0,0.12) !important;
-        box-shadow: 0 6px 16px rgba(0,0,0,0.06) !important;
+        border: 1px solid #e2e8f0 !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
       }
       .chat-wrap.light .bubble.user {
-        background: linear-gradient(180deg,#c4f4ff,#8feaff) !important;
-        color: #00323a !important;
-        border: 1px solid rgba(0,0,0,0.12) !important;
-        box-shadow: 0 6px 16px rgba(0,0,0,0.06) !important;
+        background: linear-gradient(180deg, #bae6fd, #7dd3fc) !important;
+        color: #0c4a6e !important;
+        border: none !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
       }
-
-      /* AVATAR, TITLE, SUBTITLE */
-      .chat-wrap.light .avatar {
-        background: #ffffff !important;
-        color: #0b1220 !important;
-        border: 1px solid rgba(0,0,0,0.14) !important;
-      }
-      .chat-wrap.light .title,
-      .chat-wrap.light .sub,
       .chat-wrap.light .ts {
-        color: #0b1220 !important;
+        color: #64748b !important;
       }
-
-      /* QUICK BUTTONS */
-      .chat-wrap.light .qbtn {
+      
+      /* 6. LOGO & HEADER WRAPPER */
+      .chat-wrap.light .header {
         background: #ffffff !important;
-        border: 1px solid rgba(0,0,0,0.15) !important;
-        color: #0b1220 !important;
-        box-shadow: 0 6px 16px rgba(0,0,0,0.06) !important;
+        border-bottom: 1px solid #e2e8f0 !important;
       }
-
-      /* STREAMLIT BUTTON OVERRIDE */
-      body.chat-light .stButton > button {
-        background: #ffffff !important;
-        color: #0b1220 !important;
-        border: 1px solid rgba(0,0,0,0.15) !important;
-        border-radius: 12px !important;
-        padding: 0.5rem 1rem !important;
-        box-shadow: 0 6px 14px rgba(0,0,0,0.05) !important;
-      }
-
-      /* STREAMLIT TEXT INPUT LIGHT */
-      body.chat-light .stTextInput > div > div > input,
-      body.chat-light input[placeholder^="Tulis pesan"] {
-        background: #ffffff !important;
-        color: #0b1220 !important;
-        border: 1px solid rgba(0,0,0,0.15) !important;
-        border-radius: 999px !important;
-        padding: 10px 14px !important;
-        box-shadow: inset 0 4px 12px rgba(0,0,0,0.05) !important;
-      }
-      body.chat-light input::placeholder {
-        color: rgba(0,0,0,0.4) !important;
+      .chat-wrap.light .title, .chat-wrap.light .sub {
+        color: #0f172a !important;
       }
     </style>
     """, unsafe_allow_html=True)
 
-    # Add class to body (for widget override)
+    # Inject class for body (helper JS)
     components.html("""
     <script>
-      document.body.classList.add('chat-light');
-      document.body.classList.remove('chat-dark');
+      const body = window.parent.document.body;
+      body.classList.add('chat-light');
+      body.classList.remove('chat-dark');
     </script>
-    """, height=1)
+    """, height=0, width=0)
 
 else:
+    # --- DARK THEME DEFAULT ---
     st.markdown("""
     <style>
-      body, .stApp, .main, .block-container {
-        background: #0b1220 !important;
+      .stApp {
+        background-color: #0b1220 !important;
         color: #e7eef6 !important;
       }
-      .stApp * { color: inherit !important; }
     </style>
     """, unsafe_allow_html=True)
 
     components.html("""
     <script>
-      document.body.classList.add('chat-dark');
-      document.body.classList.remove('chat-light');
+      const body = window.parent.document.body;
+      body.classList.add('chat-dark');
+      body.classList.remove('chat-light');
     </script>
-    """, height=1)
-
-
+    """, height=0, width=0)
+    
 if not APP_OK:
     st.markdown(f'<div class="error">Warning: gagal mengimpor helper dari <code>app.py</code> — {APP_ERR}</div>', unsafe_allow_html=True)
 
@@ -748,14 +755,34 @@ for label, value in quick_options:
     idx += 1
 st.markdown('</div>', unsafe_allow_html=True)
 
-# input area
+# Call Back Enter
+def handle_input():
+    user_text = st.session_state.get("chat_input_field", "")
+    
+    if user_text.strip():
+        process_message(user_text)
+        
+        st.session_state.chat_input_field = ""
+
+# input area UI
 st.markdown('<div class="input-bar">', unsafe_allow_html=True)
-st.session_state.chat_input = st.text_input("Pesan", placeholder="Tulis pesan… (mis. 'cek harga nasi goreng')", value=st.session_state.chat_input, key="chat_input_field", label_visibility="collapsed")
-if st.button("Kirim", key="send_btn"):
-    txt = st.session_state.chat_input.strip()
-    if txt:
-        process_message(txt)
+
+# Text Input
+st.text_input(
+    "Pesan", 
+    placeholder="Tulis pesan… (mis. 'cek harga nasi goreng')", 
+    key="chat_input_field", 
+    label_visibility="collapsed",
+    on_change=handle_input 
+)
+st.button(
+    "Kirim", 
+    key="send_btn",
+    on_click=handle_input
+)
+
 st.markdown('</div>', unsafe_allow_html=True)
+
 
 # footer + close wrappers
 gemini_note = "Gemini aktif (ENV key tersedia)" if DEFAULT_USE_GEMINI else "Gemini tidak dikonfigurasi (ENV GEMINI_API_KEY kosong)"
