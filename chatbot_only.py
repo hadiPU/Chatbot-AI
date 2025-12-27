@@ -785,6 +785,5 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 
 # footer + close wrappers
-gemini_note = "Gemini aktif (ENV key tersedia)" if DEFAULT_USE_GEMINI else "Gemini tidak dikonfigurasi (ENV GEMINI_API_KEY kosong)"
-st.markdown(f'<div class="note">Chatbot terhubung dengan <code>app.py</code>. {gemini_note}. Toggle di header bisa override mode Gemini. Tema: {st.session_state.theme}.</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="note">Semua ini hanya demo untuk tugas akhir. Powered by Hadi ©2025. All Rights Reserved.</div>', unsafe_allow_html=True)
 st.markdown('</div></div>', unsafe_allow_html=True)
